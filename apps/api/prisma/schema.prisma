@@ -7,7 +7,8 @@
 //  4) 회원 탈퇴는 물리 삭제 대신 익명화 처리 (passwordHash nullable 등)
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
