@@ -9,7 +9,6 @@ RUN npm ci
 # ---- build: Prisma Client 생성 + TypeScript 빌드 ----
 FROM node:20-alpine AS build
 WORKDIR /app
-RUN apk add --no-cache openssl1.1-compat
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate --schema=prisma/schema.prisma
@@ -18,7 +17,6 @@ RUN npm run build
 # ---- production deps: 운영에 필요한 패키지만 재설치 후 Prisma Client 재생성 ----
 FROM node:20-alpine AS prod-deps
 WORKDIR /app
-RUN apk add --no-cache openssl1.1-compat
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 COPY --from=build /app/prisma ./prisma
@@ -28,7 +26,6 @@ RUN npx prisma generate --schema=prisma/schema.prisma
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apk add --no-cache openssl1.1-compat
 RUN addgroup -S nodejs && adduser -S nestjs -G nodejs
 
 COPY --from=prod-deps /app/node_modules ./node_modules
