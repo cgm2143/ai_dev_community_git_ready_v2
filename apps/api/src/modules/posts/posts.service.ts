@@ -39,6 +39,8 @@ const LIST_SELECT = {
   isNotice: true,
   postTags: { select: { tag: { select: { name: true } } } },
   createdAt: true,
+  status: true,
+  deletedAt: true,
 } satisfies Prisma.PostSelect;
 
 /** 상세 조회 전용 select. 목록 select에 본문/첨부파일/수정일시를 더한다. */
