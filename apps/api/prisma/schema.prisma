@@ -1,0 +1,590 @@
+// AI 개발자 커뮤니티 - Prisma Schema
+// 6단계: DB 설계 최종본 (v2 - UUID v7 / 익명화 / FTS 반영)
+// 반영된 결정:
+//  1) PostgreSQL FTS(tsvector+GIN)는 수동 SQL 마이그레이션으로 생성, 검색은 Repository로 추상화(향후 OpenSearch 전환 대비)
+//  2) reactions/reports 다형성 구조 유지, 서비스 레이어에 재사용 가능한 TargetValidator로 검증
+//  3) 모든 PK는 UUID v7 (dbgenerated, 시간순 정렬 가능) 사용
+//  4) 회원 탈퇴는 물리 삭제 대신 익명화 처리 (passwordHash nullable 등)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================================
+// 인증 / 사용자
+// =========================================
+
+model Role {
+  id          String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name        String   @unique // SUPER_ADMIN, ADMIN, MODERATOR, USER
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  users           User[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  code        String  @unique // POST_DELETE_ANY, USER_BAN, ...
+  description String?
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  WITHDRAWN // 탈퇴(익명화) 완료 상태
+}
+
+model User {
+  id              String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  // 탈퇴(익명화) 시 email/nickname은 anonymized 패턴으로 치환, passwordHash/profileImageUrl/bio는 null 처리
+  email           String     @unique
+  passwordHash    String?    @map("password_hash") // 익명화 시 null (로그인 정보 완전 제거)
+  nickname        String     @unique
+  profileImageUrl String?    @map("profile_image_url")
+  bio             String?    @db.VarChar(300)
+  roleId          String     @map("role_id") @db.Uuid
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?  @map("email_verified_at")
+  lastLoginAt     DateTime?  @map("last_login_at")
+  anonymizedAt    DateTime?  @map("anonymized_at") // 익명화 처리 시각 (탈퇴 시각과 동일하게 기록)
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  role Role @relation(fields: [roleId], references: [id])
+
+  posts             Post[]
+  comments          Comment[]
+  reactions         Reaction[]
+  bookmarks         Bookmark[]
+  reportsFiled      Report[]          @relation("ReportsFiled")
+  reportsResolved   Report[]          @relation("ReportsResolved")
+  notifications     Notification[]   @relation("NotificationReceiver")
+  notificationActor Notification[]   @relation("NotificationActor")
+  refreshTokens     RefreshToken[]
+  blocksMade        UserBlock[]       @relation("Blocker")
+  blocksReceived    UserBlock[]       @relation("Blocked")
+  chatParticipants  ChatParticipant[]
+  chatMessages      ChatMessage[]
+  adminLogs         Log[]
+  attachments       Attachment[]
+  createdAds        Ad[]
+  visits            Visit[]
+  createdBannedWords BannedWord[]
+  createdIpBans      IpBan[]
+
+  @@index([status])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @map("token_hash")
+  userAgent String?   @map("user_agent")
+  ip        String?
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 탈퇴(익명화) 시 이 테이블의 해당 사용자 row는 전량 물리 삭제 (인증 정보 완전 제거 원칙)
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model UserBlock {
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@map("user_blocks")
+}
+
+// =========================================
+// 카테고리 / 게시판
+// =========================================
+
+model Category {
+  id        String @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name      String
+  slug      String @unique
+  sortOrder Int    @default(0) @map("sort_order")
+
+  boards Board[]
+
+  @@map("categories")
+}
+
+model Board {
+  id          String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  categoryId  String  @map("category_id") @db.Uuid
+  name        String
+  slug        String  @unique
+  description String?
+  sortOrder   Int     @default(0) @map("sort_order")
+  isActive    Boolean @default(true) @map("is_active")
+
+  category Category @relation(fields: [categoryId], references: [id])
+  posts    Post[]
+
+  @@index([categoryId])
+  @@map("boards")
+}
+
+// =========================================
+// 게시글
+// =========================================
+
+enum PostStatus {
+  PUBLISHED
+  HIDDEN
+  DELETED
+}
+
+model Post {
+  id           String     @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  boardId      String     @map("board_id") @db.Uuid
+  authorId     String     @map("author_id") @db.Uuid
+  title        String     @db.VarChar(200)
+  content      String
+  contentHtml  String?    @map("content_html")
+  excerpt      String?    @db.VarChar(200) // 목록 조회용 미리보기(HTML 태그 제거, 최대 150자). 작성/수정 시 미리 계산해 저장 - 목록 API가 content/contentHtml을 아예 조회하지 않아도 되도록 함
+  viewCount    Int        @default(0) @map("view_count")
+  likeCount    Int        @default(0) @map("like_count")
+  dislikeCount Int        @default(0) @map("dislike_count")
+  commentCount Int        @default(0) @map("comment_count")
+  isNotice     Boolean    @default(false) @map("is_notice")
+  status       PostStatus @default(PUBLISHED)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  deletedAt    DateTime?  @map("deleted_at") // Soft Delete: 삭제 시각 기록, 복구 기능(휴지통) 지원. status=DELETED와 함께 사용
+  // search_vector(tsvector)는 Prisma가 관리하지 않음 - 수동 마이그레이션(02_fts_setup.sql)에서 생성 및 GIN 인덱스 부여
+
+  board       Board        @relation(fields: [boardId], references: [id])
+  author      User         @relation(fields: [authorId], references: [id])
+  comments    Comment[]
+  postTags    PostTag[]
+  attachments Attachment[]
+  bookmarks   Bookmark[]
+  visits      Visit[]
+  aiAnalyses  AiAnalysis[]
+
+  @@index([boardId, createdAt])
+  @@index([status, createdAt])
+  @@index([authorId])
+  @@index([deletedAt])
+  @@map("posts")
+}
+
+model Tag {
+  id         String @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name       String @unique
+  usageCount Int    @default(0) @map("usage_count")
+
+  postTags PostTag[]
+
+  @@map("tags")
+}
+
+model PostTag {
+  postId String @map("post_id") @db.Uuid
+  tagId  String @map("tag_id") @db.Uuid
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("post_tags")
+}
+
+model Attachment {
+  id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  postId     String?  @map("post_id") @db.Uuid
+  uploaderId String   @map("uploader_id") @db.Uuid
+  fileUrl    String   @map("file_url")
+  fileType   String   @map("file_type")
+  fileSize   Int      @map("file_size")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  post     Post? @relation(fields: [postId], references: [id], onDelete: SetNull)
+  uploader User  @relation(fields: [uploaderId], references: [id])
+
+  @@index([postId])
+  @@map("attachments")
+}
+
+// =========================================
+// 댓글 / 반응 / 신고 / 북마크
+// =========================================
+
+model Comment {
+  id        String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  postId    String    @map("post_id") @db.Uuid
+  authorId  String    @map("author_id") @db.Uuid
+  parentId  String?   @map("parent_id") @db.Uuid
+  content   String
+  likeCount Int       @default(0) @map("like_count")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at") // Soft Delete: 대댓글 구조 유지를 위해 물리 삭제 대신 이 값으로 "삭제된 댓글입니다" 표시 + 복구 지원
+
+  post    Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author  User      @relation(fields: [authorId], references: [id])
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies Comment[] @relation("CommentReplies")
+
+  @@index([postId, parentId])
+  @@index([deletedAt])
+  @@map("comments")
+}
+
+// 다형성 대상 타입 - 향후 재사용을 고려해 값 집합을 넉넉히 확보 (POST, COMMENT 외 확장 여지)
+enum ReactionTargetType {
+  POST
+  COMMENT
+}
+
+enum ReactionType {
+  LIKE
+  DISLIKE
+}
+
+model Reaction {
+  id         String             @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId     String             @map("user_id") @db.Uuid
+  targetType ReactionTargetType @map("target_type")
+  targetId   String             @map("target_id") @db.Uuid
+  type       ReactionType
+  createdAt  DateTime           @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetType, targetId])
+  @@index([targetType, targetId])
+  @@map("reactions")
+}
+
+enum ReportTargetType {
+  POST
+  COMMENT
+  USER
+}
+
+enum ReportReason {
+  SPAM
+  ABUSE
+  ILLEGAL
+  ETC
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  REJECTED
+}
+
+model Report {
+  id          String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  reporterId  String           @map("reporter_id") @db.Uuid
+  targetType  ReportTargetType @map("target_type")
+  targetId    String           @map("target_id") @db.Uuid
+  reason      ReportReason
+  description String?
+  status      ReportStatus     @default(PENDING)
+  resolvedBy  String?          @map("resolved_by") @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at")
+  resolvedAt  DateTime?        @map("resolved_at")
+
+  reporter User  @relation("ReportsFiled", fields: [reporterId], references: [id])
+  resolver User? @relation("ReportsResolved", fields: [resolvedBy], references: [id])
+
+  @@index([status])
+  @@index([targetType, targetId])
+  @@map("reports")
+}
+
+model Bookmark {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@map("bookmarks")
+}
+
+// =========================================
+// 알림 / 채팅
+// =========================================
+
+enum NotificationType {
+  COMMENT
+  REPLY
+  LIKE
+  NOTICE
+  REPORT
+}
+
+model Notification {
+  id         String           @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId     String           @map("user_id") @db.Uuid
+  type       NotificationType
+  actorId    String?          @map("actor_id") @db.Uuid
+  targetType String?          @map("target_type")
+  targetId   String?          @map("target_id") @db.Uuid
+  message    String
+  isRead     Boolean          @default(false) @map("is_read")
+  // 향후 "동일 게시글의 연속된 댓글/추천 알림 묶기" 기능을 위한 확장 컬럼.
+  // groupKey는 생성 시점에 `{type}:{targetType}:{targetId}` 형태로 항상 채워두되,
+  // 지금 당장은 그룹핑 병합 로직 없이 매 알림마다 새 row를 만든다(1건당 count=1).
+  // 나중에 그룹핑을 실제로 켤 때는, "최근 N분 내 동일 groupKey가 있으면 새 row 대신
+  // 그 row의 groupCount를 증가시키고 message만 갱신" 하는 방식으로 확장하면 되고,
+  // 이 컬럼들 덕분에 스키마 변경이나 과거 데이터 마이그레이션이 필요 없다.
+  groupKey   String?          @map("group_key")
+  groupCount Int              @default(1) @map("group_count")
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  user  User  @relation("NotificationReceiver", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("NotificationActor", fields: [actorId], references: [id])
+
+  @@index([userId, isRead, createdAt])
+  @@index([userId, groupKey, createdAt])
+  @@map("notifications")
+}
+
+enum ChatRoomType {
+  DM
+  GROUP
+}
+
+model ChatRoom {
+  id        String       @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  type      ChatRoomType
+  name      String?
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  participants ChatParticipant[]
+  messages     ChatMessage[]
+
+  @@map("chat_rooms")
+}
+
+model ChatParticipant {
+  roomId   String   @map("room_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@map("chat_participants")
+}
+
+model ChatMessage {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  roomId    String   @map("room_id") @db.Uuid
+  senderId  String   @map("sender_id") @db.Uuid
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  room   ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender User     @relation(fields: [senderId], references: [id])
+
+  @@index([roomId, createdAt])
+  @@map("chat_messages")
+}
+
+// =========================================
+// 광고 / 배너 (통합)
+// =========================================
+
+model AdSlot {
+  id          String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  code        String  @unique // HEADER_TOP, HOME_FEED_1, SIDEBAR_TOP, ...
+  name        String
+  description String?
+
+  ads Ad[]
+
+  @@map("ad_slots")
+}
+
+enum AdType {
+  IMAGE
+  HTML
+  SCRIPT
+  ADSENSE
+}
+
+enum AdPurpose {
+  AD
+  EVENT_BANNER
+}
+
+model Ad {
+  id        String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  slotId    String    @map("slot_id") @db.Uuid
+  type      AdType
+  purpose   AdPurpose @default(AD)
+  content   String
+  linkUrl   String?   @map("link_url")
+  isActive  Boolean   @default(true) @map("is_active")
+  startAt   DateTime? @map("start_at")
+  endAt     DateTime? @map("end_at")
+  createdBy String    @map("created_by") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  deletedAt DateTime? @map("deleted_at") // Soft Delete: 광고/배너 삭제 후에도 복구 및 과거 통계 조회 가능하도록 유지
+
+  slot        AdSlot         @relation(fields: [slotId], references: [id])
+  creator     User           @relation(fields: [createdBy], references: [id])
+  impressions AdImpression[]
+  clicks      AdClick[]
+
+  @@index([slotId, isActive])
+  @@index([deletedAt])
+  @@map("ads")
+}
+
+model AdImpression {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  adId      String   @map("ad_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  ip        String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ad Ad @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@index([adId, createdAt])
+  @@map("ad_impressions")
+}
+
+model AdClick {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  adId      String   @map("ad_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  ip        String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ad Ad @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@index([adId, createdAt])
+  @@map("ad_clicks")
+}
+
+// =========================================
+// 통계 / 로그 / 설정 / AI
+// =========================================
+
+model Visit {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  ip        String?
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post Post  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([postId, createdAt])
+  @@map("visits")
+}
+
+model Log {
+  id         String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  adminId    String   @map("admin_id") @db.Uuid
+  action     String
+  targetType String?  @map("target_type")
+  targetId   String?  @map("target_id") @db.Uuid
+  meta       Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  admin User @relation(fields: [adminId], references: [id])
+
+  @@index([adminId, createdAt])
+  @@map("logs")
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+model BannedWord {
+  id        String   @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  word      String   @unique
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  creator User @relation(fields: [createdBy], references: [id])
+
+  @@map("banned_words")
+}
+
+model IpBan {
+  id        String    @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  ipAddress String    @unique @map("ip_address")
+  reason    String?
+  createdBy String    @map("created_by") @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  expiresAt DateTime? @map("expires_at") // null이면 무기한 차단
+
+  creator User @relation(fields: [createdBy], references: [id])
+
+  @@map("ip_bans")
+}
+
+enum AiAnalysisType {
+  SUMMARY
+  AUTO_TAG
+  TRANSLATION
+}
+
+model AiAnalysis {
+  id        String         @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  postId    String         @map("post_id") @db.Uuid
+  type      AiAnalysisType
+  result    Json
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, type])
+  @@map("ai_analysis")
+}

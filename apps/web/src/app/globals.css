@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * 5단계 UI 디자인 문서에서 확정한 토큰. 기본값은 라이트모드이고,
+ * <html class="dark">가 붙으면 다크모드 값으로 전환된다 (헤더의 수동 토글 + 쿠키/DB 저장).
+ */
+:root {
+  --bg-page: #fafafa;
+  --bg-surface: #ffffff;
+  --bg-surface-muted: #f1f2f4;
+  --bg-surface-raised: #ffffff;
+  --border-hairline: #e4e6ea;
+
+  --text-primary: #14161a;
+  --text-secondary: #5c6270;
+  --text-muted: #9298a5;
+
+  --accent-primary-tint: #edeafc;
+  --accent-primary: #8b7cf6;
+  --accent-primary-strong: #6d5bd0;
+  --accent-amber: #b5720f;
+  --accent-danger: #d0403e;
+  --accent-ai-teal: #0e9488;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', 'Pretendard', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+.dark {
+  --bg-page: #0f1115;
+  --bg-surface: #171a20;
+  --bg-surface-muted: #1e222a;
+  --bg-surface-raised: #1e222a;
+  --border-hairline: #2a2e37;
+
+  --text-primary: #e8eaed;
+  --text-secondary: #9298a5;
+  --text-muted: #6b7280;
+
+  --accent-primary-tint: #2a2440;
+  --accent-primary: #a79bf7;
+  --accent-primary-strong: #8b7cf6;
+  --accent-amber: #f5a524;
+  --accent-danger: #e5534b;
+  --accent-ai-teal: #2dd4bf;
+}
+
+* {
+  border-color: var(--border-hairline);
+}
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}
+
+/* 접근성: reduced-motion 선호 시 Activity Pulse Bar 등 장식성 애니메이션을 끈다. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

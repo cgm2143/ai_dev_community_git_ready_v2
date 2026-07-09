@@ -1,0 +1,101 @@
+name: ai-dev-community
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: ai_dev_community
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # uuid_generate_v7() 함수는 로컬 최초 기동 시 자동 적용 (운영에서는 prisma migrate deploy 파이프라인에 포함)
+      - ./infra/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U devuser -d ai_dev_community']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: devuser
+      MINIO_ROOT_PASSWORD: devpassword123
+    ports:
+      - '9000:9000' # S3 API
+      - '9001:9001' # 관리 콘솔
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2단계에서는 수동으로 생성해 두었던 MinIO 버킷을, 배포 단계에서 `docker compose up` 한 번으로
+  # 자동 준비되도록 마무리한다. minio/mc(MinIO 클라이언트) 이미지로 버킷 생성 + 익명 다운로드
+  # 정책만 설정하고 종료하는 1회성 초기화 컨테이너다 (계속 떠 있지 않음).
+  createbuckets:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 devuser devpassword123 &&
+      (mc mb local/ai-dev-community || true) &&
+      mc anonymous set download local/ai-dev-community &&
+      echo '[createbuckets] ai-dev-community 버킷 준비 완료 (공개 다운로드 정책 적용)'
+      "
+    restart: 'no'
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./apps/api/.env
+    environment:
+      DATABASE_URL: postgresql://devuser:devpassword@postgres:5432/ai_dev_community?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_URL_BASE: http://localhost:9000/ai-dev-community
+      S3_ACCESS_KEY_ID: devuser
+      S3_SECRET_ACCESS_KEY: devpassword123
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      createbuckets:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
