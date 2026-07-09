@@ -35,22 +35,22 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:3001'),
   FRONTEND_URL: z.string().url().default('http://localhost:3001'),
 
-  MAIL_HOST: z.string().min(1),
+  MAIL_HOST: z.string().optional(),
   MAIL_PORT: z.coerce.number().int().min(1).max(65535).default(587),
-  MAIL_USER: z.string().min(1),
-  MAIL_PASSWORD: z.string().min(1),
+  MAIL_USER: z.string().optional(),
+  MAIL_PASSWORD: z.string().optional(),
   MAIL_FROM: z.string().min(1).default('devhub <no-reply@devhub.example.com>'),
   MAIL_SECURE: z
     .string()
     .default('false')
     .transform((value) => value === 'true'),
 
-  S3_ENDPOINT: z.string().url(),
+  S3_ENDPOINT: z.string().url().optional(),
   S3_REGION: z.string().default('us-east-1'),
-  S3_BUCKET: z.string().min(1),
-  S3_ACCESS_KEY_ID: z.string().min(1),
-  S3_SECRET_ACCESS_KEY: z.string().min(1),
-  S3_PUBLIC_URL_BASE: z.string().url(),
+  S3_BUCKET: z.string().optional(),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_PUBLIC_URL_BASE: z.string().url().optional(),
   S3_FORCE_PATH_STYLE: z
     .string()
     .default('true')
