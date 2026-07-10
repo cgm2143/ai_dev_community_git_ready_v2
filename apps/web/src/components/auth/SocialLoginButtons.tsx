@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 function NaverIcon() {
@@ -20,11 +22,7 @@ function KakaoIcon() {
 }
 
 function GoogleIcon() {
-  return (
-    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[12px] font-bold text-[#4285F4]">
-      G
-    </span>
-  );
+  return <Image src="/google-logo.png" alt="Google" width={20} height={20} className="h-5 w-5 object-contain" />;
 }
 
 export function SocialLoginButtons() {
