@@ -3,12 +3,14 @@
 import { usePost } from '@/features/posts/hooks/usePost';
 import { useUpdatePost } from '@/features/posts/hooks/usePostMutations';
 import { PostEditor } from '@/components/post/PostEditor';
+import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
 
 export default function EditPostPage({ params }: { params: { postId: string } }) {
+  const { isChecking } = useRequireAuth();
   const { data: post, isLoading } = usePost(params.postId);
   const updateMutation = useUpdatePost(params.postId);
 
-  if (isLoading) {
+  if (isChecking || isLoading) {
     return <div className="h-64 animate-pulse rounded-card bg-bg-surface-muted" />;
   }
 
