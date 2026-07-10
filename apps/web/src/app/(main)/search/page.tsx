@@ -45,7 +45,7 @@ export default function SearchPage() {
         <>
           <p className="text-sm text-text-secondary">
             <span className="font-semibold text-text-primary">&ldquo;{q}&rdquo;</span> 검색 결과{' '}
-            {data ? `${data.meta.total}건` : ''}
+            {data && <Pagination page={page} limit={PAGE_SIZE} total={data.meta.total} onPageChange={setPage} />}
           </p>
 
           <PostList
