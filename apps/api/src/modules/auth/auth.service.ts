@@ -195,7 +195,11 @@ export class AuthService {
     });
 
     if (existingLink) {
-      return this.finalizeSocialLogin(existingLink.user, context);
+      if (existingLink.user.status === UserStatus.WITHDRAWN) {
+        await this.prisma.socialAccount.delete({ where: { id: existingLink.id } });
+      } else {
+        return this.finalizeSocialLogin(existingLink.user, context);
+      }
     }
 
     let user = email
