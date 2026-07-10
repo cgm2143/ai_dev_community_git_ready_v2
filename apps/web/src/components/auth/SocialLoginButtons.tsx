@@ -30,28 +30,19 @@ function GoogleIcon() {
 export function SocialLoginButtons() {
   return (
     <div className="flex flex-col gap-2">
-      
-        href={`${API_BASE_URL}/v1/auth/naver`}
-        className="relative flex h-10 items-center justify-center rounded-md bg-[#03C75A] text-sm font-medium text-white hover:opacity-90"
-      >
+      <a href={`${API_BASE_URL}/v1/auth/naver`} className="relative flex h-10 items-center justify-center rounded-md bg-[#03C75A] text-sm font-medium text-white hover:opacity-90">
         <span className="absolute left-3">
           <NaverIcon />
         </span>
         네이버로 로그인
       </a>
-      
-        href={`${API_BASE_URL}/v1/auth/kakao`}
-        className="relative flex h-10 items-center justify-center rounded-md bg-[#FEE500] text-sm font-medium text-[#191919] hover:opacity-90"
-      >
+      <a href={`${API_BASE_URL}/v1/auth/kakao`} className="relative flex h-10 items-center justify-center rounded-md bg-[#FEE500] text-sm font-medium text-[#191919] hover:opacity-90">
         <span className="absolute left-3">
           <KakaoIcon />
         </span>
         카카오로 로그인
       </a>
-      
-        href={`${API_BASE_URL}/v1/auth/google`}
-        className="relative flex h-10 items-center justify-center gap-2 rounded-md border border-border-hairline bg-white text-sm font-medium text-[#191919] hover:bg-bg-surface-muted"
-      >
+      <a href={`${API_BASE_URL}/v1/auth/google`} className="relative flex h-10 items-center justify-center gap-2 rounded-md border border-border-hairline bg-white text-sm font-medium text-[#191919] hover:bg-bg-surface-muted">
         <span className="absolute left-3">
           <GoogleIcon />
         </span>
