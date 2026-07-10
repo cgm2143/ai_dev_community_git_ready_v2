@@ -41,8 +41,8 @@ export function uploadProfileImage(file: File): Promise<UploadedProfileImage> {
   return apiFetchMultipart<UploadedProfileImage>('/users/me/profile-image', formData);
 }
 
-export function withdrawAccount(password: string) {
-  return api.delete<void>('/users/me', { password });
+export function withdrawAccount(password?: string) {
+  return api.delete<void>('/users/me', password ? { password } : undefined);
 }
 
 export interface BlockedUser {
