@@ -68,7 +68,12 @@ export default function BoardPostsPage({ params }: { params: { boardSlug: string
       />
 
       {postsQuery.data && (
-        <Pagination page={page} limit={PAGE_SIZE} total={postsQuery.data.meta.total} onPageChange={setPage} />
+        <Pagination
+          page={page}
+          limit={PAGE_SIZE}
+          total={postsQuery.data.meta?.total ?? 0}
+          onPageChange={setPage}
+        />
       )}
     </div>
   );
