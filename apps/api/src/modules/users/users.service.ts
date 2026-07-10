@@ -159,11 +159,13 @@ export class UsersService {
    * - refresh_tokens: 물리 삭제 (인증 정보이므로 완전 제거)
    * - posts/comments: 그대로 유지 (author_id 보존, 화면에는 "삭제된 회원"으로 표시)
    */
-  async withdraw(userId: string, password: string): Promise<void> {
+    async withdraw(userId: string, password?: string): Promise<void> {
     const user = await this.findActiveUserOrThrow(userId);
 
-    if (!user.passwordHash || !(await this.passwordService.compare(password, user.passwordHash))) {
-      throw new AppException(ErrorCode.INVALID_CREDENTIALS, '비밀번호가 일치하지 않습니다.');
+    if (user.passwordHash) {
+      if (!password || !(await this.passwordService.compare(password, user.passwordHash))) {
+        throw new AppException(ErrorCode.INVALID_CREDENTIALS, '비밀번호가 일치하지 않습니다.');
+      }
     }
 
     const anonymizedSuffix = randomUUID().slice(0, 8);
