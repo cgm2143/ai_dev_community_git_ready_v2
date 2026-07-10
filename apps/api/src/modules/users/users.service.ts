@@ -186,6 +186,7 @@ export class UsersService {
         },
       }),
       this.prisma.refreshToken.deleteMany({ where: { userId } }),
+      this.prisma.socialAccount.deleteMany({ where: { userId } }),
     ]);
 
     this.logger.info({ userId }, '회원 탈퇴(익명화)가 완료되었습니다.');
