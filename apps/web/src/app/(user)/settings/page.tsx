@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Image from 'next/image';
 import { UserRound } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
+import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
 import {
   useUpdateProfile,
   useChangePassword,
@@ -256,6 +257,11 @@ function WithdrawSection() {
 }
 
 export default function SettingsPage() {
+  const { isChecking } = useRequireAuth();
+
+  if (isChecking) {
+    return <div className="h-64 animate-pulse rounded-card bg-bg-surface-muted" />;
+  }
   return (
     <div className="flex flex-col gap-6">
       <h1 className="font-display text-xl font-semibold text-text-primary">설정</h1>
