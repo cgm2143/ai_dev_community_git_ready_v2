@@ -262,6 +262,7 @@ export default function SettingsPage() {
   if (isChecking) {
     return <div className="h-64 animate-pulse rounded-card bg-bg-surface-muted" />;
   }
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="font-display text-xl font-semibold text-text-primary">설정</h1>

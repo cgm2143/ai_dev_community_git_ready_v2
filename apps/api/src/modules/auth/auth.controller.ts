@@ -1,8 +1,10 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
+import { AuthGuard } from '@nestjs/passport';
+import { SocialProvider } from '@prisma/client';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AppException } from '../../common/exceptions/app.exception';
@@ -18,6 +20,8 @@ import { REFRESH_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE_PATH } from './auth.constant
 import { AppConfig } from '../../config/configuration';
 import { EmailVerificationService } from './services/email-verification.service';
 import { PasswordResetService } from './services/password-reset.service';
+import { createSocialConfigGuard } from './guards/social-config.guard';
+import type { SocialProfile } from './strategies/naver.strategy';
 
 /**
  * 이 컨트롤러의 엔드포인트별 Rate Limit은 전역 기본값(1분 100회, app.module.ts)보다
@@ -127,6 +131,79 @@ export class AuthController {
   ): Promise<void> {
     await this.authService.logoutAll(user.id);
     this.clearRefreshCookie(res);
+  }
+
+  // ── 소셜 로그인 ──────────────────────────────────────────────────────────
+  // 흐름: (1) /auth/naver 접속 -> Passport가 네이버 인증 페이지로 리다이렉트
+  //       (2) 사용자가 네이버에서 로그인/동의 -> 네이버가 /auth/naver/callback으로 리다이렉트
+  //       (3) 콜백에서 우리 회원 계정을 찾거나 새로 만들고, 일반 로그인과 동일하게
+  //           Refresh Token을 HttpOnly 쿠키로 굽고 프론트엔드로 리다이렉트한다.
+  //       (4) Access Token은 URL에 담지 않는다 - 프론트엔드의 콜백 페이지가
+  //           /auth/refresh를 한 번 호출해 방금 구운 쿠키로 Access Token을 받아간다
+  //           (기존 로그인 흐름과 완전히 동일한 방식이라 프론트엔드 코드 재사용이 쉽다).
+  @Public()
+  @UseGuards(createSocialConfigGuard('naver'), AuthGuard('naver'))
+  @Get('naver')
+  @ApiOperation({ summary: '네이버 로그인 시작 (네이버 인증 페이지로 리다이렉트)' })
+  async naverLogin(): Promise<void> {
+    // Passport가 리다이렉트를 처리하므로 본문은 비어 있다.
+  }
+
+  @Public()
+  @UseGuards(createSocialConfigGuard('naver'), AuthGuard('naver'))
+  @Get('naver/callback')
+  @ApiOperation({ summary: '네이버 로그인 콜백' })
+  async naverCallback(@Req() req: Request, @Res() res: Response): Promise<void> {
+    await this.handleSocialCallback(SocialProvider.NAVER, req, res);
+  }
+
+  @Public()
+  @UseGuards(createSocialConfigGuard('kakao'), AuthGuard('kakao'))
+  @Get('kakao')
+  @ApiOperation({ summary: '카카오 로그인 시작 (카카오 인증 페이지로 리다이렉트)' })
+  async kakaoLogin(): Promise<void> {}
+
+  @Public()
+  @UseGuards(createSocialConfigGuard('kakao'), AuthGuard('kakao'))
+  @Get('kakao/callback')
+  @ApiOperation({ summary: '카카오 로그인 콜백' })
+  async kakaoCallback(@Req() req: Request, @Res() res: Response): Promise<void> {
+    await this.handleSocialCallback(SocialProvider.KAKAO, req, res);
+  }
+
+  @Public()
+  @UseGuards(createSocialConfigGuard('google'), AuthGuard('google'))
+  @Get('google')
+  @ApiOperation({ summary: '구글 로그인 시작 (구글 인증 페이지로 리다이렉트)' })
+  async googleLogin(): Promise<void> {}
+
+  @Public()
+  @UseGuards(createSocialConfigGuard('google'), AuthGuard('google'))
+  @Get('google/callback')
+  @ApiOperation({ summary: '구글 로그인 콜백' })
+  async googleCallback(@Req() req: Request, @Res() res: Response): Promise<void> {
+    await this.handleSocialCallback(SocialProvider.GOOGLE, req, res);
+  }
+
+  private async handleSocialCallback(provider: SocialProvider, req: Request, res: Response): Promise<void> {
+    const profile = req.user as SocialProfile;
+    const appConfig = this.configService.get<AppConfig>('app');
+
+    try {
+      const tokens = await this.authService.loginWithSocialProfile(
+        provider,
+        profile.providerUserId,
+        profile.email,
+        profile.nicknameHint,
+        this.extractContext(req),
+      );
+      this.setRefreshCookie(res, tokens.refreshToken);
+      res.redirect(`${appConfig?.frontendUrl}/auth/callback`);
+    } catch {
+      // 실패 원인(정지된 계정 등)을 URL에 그대로 노출하지 않고, 프론트엔드가 안내 문구를
+      // 보여줄 수 있도록 에러 표시만 붙여 리다이렉트한다.
+      res.redirect(`${appConfig?.frontendUrl}/auth/callback?error=1`);
+    }
   }
 
   private extractContext(req: Request) {

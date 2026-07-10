@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginFormValues } from '@/schemas/auth.schema';
 import { useLogin } from '@/features/auth/hooks/useLogin';
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -53,14 +54,23 @@ export default function LoginPage() {
           <Button type="submit" variant="primary" size="lg" disabled={loginMutation.isPending}>
             {loginMutation.isPending ? '로그인 중...' : '로그인'}
           </Button>
+
+          <Button type="button" variant="outline" size="lg" asChild>
+            <Link href="/register">코비온 회원가입</Link>
+          </Button>
         </form>
 
-        <div className="mt-5 flex items-center justify-between text-sm text-text-secondary">
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-border-hairline" />
+          <span className="text-xs text-text-muted">또는 소셜 계정으로 계속하기</span>
+          <div className="h-px flex-1 bg-border-hairline" />
+        </div>
+
+        <SocialLoginButtons />
+
+        <div className="mt-5 text-center text-sm text-text-secondary">
           <Link href="/password/forgot" className="hover:text-accent-primary-strong">
             비밀번호를 잊으셨나요?
-          </Link>
-          <Link href="/register" className="font-medium text-accent-primary-strong hover:underline">
-            회원가입
           </Link>
         </div>
       </CardContent>

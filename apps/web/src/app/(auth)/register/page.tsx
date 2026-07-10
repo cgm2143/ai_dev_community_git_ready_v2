@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema, type RegisterFormValues } from '@/schemas/auth.schema';
 import { useRegister } from '@/features/auth/hooks/useRegister';
+import { TermsAgreement } from '@/components/auth/TermsAgreement';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,8 +16,13 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
-  } = useForm<RegisterFormValues>({ resolver: zodResolver(registerSchema) });
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { agreeTerms: false, agreePrivacy: false, agreeAge: false },
+  });
   const registerMutation = useRegister();
 
   const onSubmit = (values: RegisterFormValues) => {
@@ -55,6 +61,8 @@ export default function RegisterPage() {
               <p className="text-xs text-accent-danger">{errors.passwordConfirm.message}</p>
             )}
           </div>
+
+          <TermsAgreement register={register} watch={watch} setValue={setValue} errors={errors} />
 
           {registerMutation.isError && (
             <p className="rounded-md bg-accent-danger/10 px-3 py-2 text-xs text-accent-danger">

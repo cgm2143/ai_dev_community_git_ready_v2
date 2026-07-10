@@ -4,6 +4,9 @@ import { JwtModule, JwtService } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { JwtConfig } from '../../config/configuration';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { NaverStrategy } from './strategies/naver.strategy';
+import { KakaoStrategy } from './strategies/kakao.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { PasswordService } from './services/password.service';
@@ -51,6 +54,9 @@ const refreshJwtServiceProvider = {
   controllers: [AuthController],
   providers: [
     JwtStrategy,
+    NaverStrategy,
+    KakaoStrategy,
+    GoogleStrategy,
     AuthService,
     PasswordService,
     TokenService,

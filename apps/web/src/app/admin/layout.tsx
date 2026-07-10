@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import * as React from 'react';
 import { useAuthStore } from '@/stores/auth-store';
+import { Logo } from '@/components/layout/Logo';
 
 const NAV_ITEMS = [
   { href: '/admin', label: '대시보드' },
@@ -41,9 +42,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex min-h-screen">
       <aside className="w-56 shrink-0 border-r border-border-hairline bg-bg-surface p-4">
-        <Link href="/" className="mb-6 block font-display text-lg font-semibold text-text-primary">
-          Dev<span className="text-accent-primary-strong">Hub</span> Admin
-        </Link>
+        <div className="mb-6">
+          <Logo height={22} />
+        </div>
         <nav className="flex flex-col gap-0.5">
           {NAV_ITEMS.map((item) => (
             <Link

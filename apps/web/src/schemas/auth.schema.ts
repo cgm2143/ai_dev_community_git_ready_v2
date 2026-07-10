@@ -25,6 +25,9 @@ export const registerSchema = z
       .max(20, '닉네임은 20자 이하여야 합니다.'),
     password: passwordSchema,
     passwordConfirm: z.string().min(1, '비밀번호를 다시 입력해 주세요.'),
+    agreeTerms: z.boolean().refine((v) => v === true, '이용약관에 동의해 주세요.'),
+    agreePrivacy: z.boolean().refine((v) => v === true, '개인정보처리방침에 동의해 주세요.'),
+    agreeAge: z.boolean().refine((v) => v === true, '만 14세 이상임을 확인해 주세요.'),
   })
   .refine((data) => data.password === data.passwordConfirm, {
     message: '비밀번호가 일치하지 않습니다.',

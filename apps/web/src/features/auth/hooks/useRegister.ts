@@ -11,10 +11,8 @@ export function useRegister() {
   const setSession = useAuthStore((state) => state.setSession);
 
   return useMutation({
-    mutationFn: (values: RegisterFormValues) => {
-      const { passwordConfirm: _passwordConfirm, ...payload } = values;
-      return register(payload);
-    },
+    mutationFn: (values: RegisterFormValues) =>
+      register({ email: values.email, nickname: values.nickname, password: values.password }),
     onSuccess: (data) => {
       setSession(data.accessToken, data.user);
       // 가입 직후에는 이메일 미인증 상태이므로, 인증 안내 화면으로 보낸다

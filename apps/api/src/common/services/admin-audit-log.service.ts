@@ -26,6 +26,9 @@ export class AdminAuditLogService {
         action: params.action,
         targetType: params.targetType,
         targetId: params.targetId,
+        // Record<string, unknown>은 값이 unknown이라 JSON 안전성이 타입상 보장되지 않으므로,
+        // Prisma가 기대하는 InputJsonValue로 명시적으로 캐스팅한다. 실제 값은 항상 JSON
+        // 직렬화 가능한 값만 넘기는 호출부 규약을 따른다(문자열/숫자/불리언/객체/배열).
         meta: params.meta as Prisma.InputJsonValue | undefined,
       },
     });

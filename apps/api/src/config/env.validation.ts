@@ -34,7 +34,21 @@ const envSchema = z.object({
 
   CORS_ORIGIN: z.string().default('http://localhost:3001'),
   FRONTEND_URL: z.string().url().default('http://localhost:3001'),
+  // 소셜 로그인 콜백 URL(redirect_uri)을 만드는 데 사용한다. 각 제공자 개발자 콘솔에 등록한
+  // 콜백 주소와 정확히 일치해야 하므로, 배포 후 실제 백엔드 공개 주소로 반드시 설정해야 한다.
+  API_BASE_URL: z.string().url().default('http://localhost:3000'),
 
+  // 소셜 로그인 - 각 제공자의 개발자 콘솔에서 발급받은 값. 미설정 시 해당 제공자 로그인은
+  // 요청 시점에 "설정되지 않음" 오류로 안내한다(서버 부팅 자체는 막지 않는다).
+  NAVER_CLIENT_ID: z.string().optional(),
+  NAVER_CLIENT_SECRET: z.string().optional(),
+  KAKAO_CLIENT_ID: z.string().optional(),
+  KAKAO_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+
+  // 메일 발송(이메일 인증/비밀번호 재설정)은 운영에 중요하지만, 이 값이 없다고 서버 전체가
+  // 부팅조차 못 하는 것은 과도하다 - 미설정 시 그냥 메일 발송 기능만 실패하도록 선택사항으로 둔다.
   MAIL_HOST: z.string().optional(),
   MAIL_PORT: z.coerce.number().int().min(1).max(65535).default(587),
   MAIL_USER: z.string().optional(),
@@ -45,6 +59,7 @@ const envSchema = z.object({
     .default('false')
     .transform((value) => value === 'true'),
 
+  // 스토리지(프로필 이미지/첨부파일)도 마찬가지로 선택사항 - 미설정 시 업로드 기능만 실패한다.
   S3_ENDPOINT: z.string().url().optional(),
   S3_REGION: z.string().default('us-east-1'),
   S3_BUCKET: z.string().optional(),

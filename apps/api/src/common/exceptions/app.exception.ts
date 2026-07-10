@@ -56,6 +56,7 @@ export class AppException extends HttpException {
       [ErrorCode.IP_ALREADY_BANNED]: '이미 차단된 IP입니다.',
       [ErrorCode.IP_BAN_NOT_FOUND]: '차단 내역을 찾을 수 없습니다.',
       [ErrorCode.SETTING_NOT_FOUND]: '설정 항목을 찾을 수 없습니다.',
+      [ErrorCode.SOCIAL_PROVIDER_NOT_CONFIGURED]: '현재 이 소셜 로그인은 준비 중입니다.',
       [ErrorCode.AD_SLOT_NOT_FOUND]: '광고 슬롯을 찾을 수 없습니다.',
       [ErrorCode.AD_NOT_FOUND]: '광고를 찾을 수 없습니다.',
       [ErrorCode.CONTAINS_BANNED_WORD]: '금칙어가 포함되어 있어 등록할 수 없습니다.',

@@ -8,7 +8,7 @@ import { LoginDto } from './dto/login.dto';
 import { PasswordService } from './services/password.service';
 import { TokenService } from './services/token.service';
 import { EmailVerificationService } from './services/email-verification.service';
-import { UserStatus } from '@prisma/client';
+import { UserStatus, SocialProvider } from '@prisma/client';
 
 export interface RequestContext {
   userAgent?: string;
@@ -171,6 +171,91 @@ export class AuthService {
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+  }
+
+  /**
+   * 소셜 로그인(네이버/카카오/구글) 공통 처리.
+   * 1) 이미 이 소셜 계정으로 가입/연동된 이력이 있으면 바로 로그인시킨다.
+   * 2) 없고, 제공자가 이메일을 알려줬다면 - 같은 이메일의 기존 계정이 있는지 확인해 자동으로 연동한다.
+   *    (네이버/카카오/구글은 이미 이메일 소유권을 검증했으므로, 우리가 다시 이메일 인증을 요구할
+   *    필요 없이 안전하게 연동할 수 있다고 판단했다.)
+   * 3) 그마저도 없으면 새 계정을 만든다. 이메일이 없는 경우(카카오는 이메일 제공 동의를 안 받을 수
+   *    있음) 로그인 식별용 내부 placeholder 이메일을 만들어 둔다(사용자에게 노출되지 않음).
+   */
+  async loginWithSocialProfile(
+    provider: SocialProvider,
+    providerUserId: string,
+    email: string | undefined,
+    nicknameHint: string,
+    context: RequestContext,
+  ): Promise<TokenPair> {
+    const existingLink = await this.prisma.socialAccount.findUnique({
+      where: { provider_providerUserId: { provider, providerUserId } },
+      include: { user: { include: { role: true } } },
+    });
+
+    if (existingLink) {
+      return this.finalizeSocialLogin(existingLink.user, context);
+    }
+
+    let user = email
+      ? await this.prisma.user.findUnique({ where: { email }, include: { role: true } })
+      : null;
+
+    if (!user) {
+      const defaultRole = await this.prisma.role.findUnique({ where: { name: 'USER' } });
+      if (!defaultRole) {
+        throw new AppException(ErrorCode.INTERNAL_SERVER_ERROR, '기본 권한 설정이 초기화되지 않았습니다.');
+      }
+
+      const nickname = await this.generateUniqueNickname(nicknameHint);
+      const placeholderEmail = email ?? `${provider.toLowerCase()}_${providerUserId}@social.local`;
+
+      user = await this.prisma.user.create({
+        data: {
+          email: placeholderEmail,
+          nickname,
+          roleId: defaultRole.id,
+          emailVerifiedAt: email ? new Date() : null,
+        },
+        include: { role: true },
+      });
+
+      this.logger.info({ userId: user.id, provider }, '소셜 로그인으로 신규 회원가입');
+    }
+
+    await this.prisma.socialAccount.create({ data: { userId: user.id, provider, providerUserId } });
+
+    return this.finalizeSocialLogin(user, context);
+  }
+
+  private async finalizeSocialLogin(
+    user: { id: string; email: string; nickname: string; status: UserStatus; role: { name: string } },
+    context: RequestContext,
+  ): Promise<TokenPair> {
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new AppException(ErrorCode.INVALID_CREDENTIALS, '이용이 제한된 계정입니다.');
+    }
+
+    await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+
+    return this.issueTokenPair(
+      { id: user.id, email: user.email, nickname: user.nickname, role: user.role.name },
+      context,
+    );
+  }
+
+  /** 닉네임 힌트(소셜 프로필의 표시 이름 등)를 기반으로, 중복되지 않는 닉네임을 찾아 반환한다. */
+  private async generateUniqueNickname(hint: string): Promise<string> {
+    const base = hint.replace(/[^\p{L}\p{N}]/gu, '').slice(0, 15) || 'user';
+    let candidate = base;
+    let suffix = 0;
+    // eslint-disable-next-line no-await-in-loop
+    while (await this.prisma.user.findUnique({ where: { nickname: candidate } })) {
+      suffix += 1;
+      candidate = `${base}${suffix}`;
+    }
+    return candidate;
   }
 
   private async issueTokenPair(

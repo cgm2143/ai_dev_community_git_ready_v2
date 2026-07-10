@@ -74,7 +74,7 @@ export default function AdminSettingsPage() {
                 id="newValue"
                 value={newValue}
                 onChange={(e) => setNewValue(e.target.value)}
-                placeholder='"DevHub" 또는 123'
+                placeholder='"코비온" 또는 123'
                 className="font-mono"
               />
             </div>

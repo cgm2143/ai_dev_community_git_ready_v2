@@ -4,10 +4,17 @@ export interface AppConfig {
   apiPrefix: string;
   corsOrigin: string;
   frontendUrl: string;
+  apiBaseUrl: string;
   swagger: {
     enabled: boolean;
     path: string;
   };
+}
+
+export interface SocialAuthConfig {
+  naver: { clientId?: string; clientSecret?: string };
+  kakao: { clientId?: string; clientSecret?: string };
+  google: { clientId?: string; clientSecret?: string };
 }
 
 export interface DatabaseConfig {
@@ -103,6 +110,7 @@ export default () => {
       apiPrefix: process.env.API_PREFIX ?? 'v1',
       corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:3001',
       frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3001',
+      apiBaseUrl: process.env.API_BASE_URL ?? 'http://localhost:3000',
       swagger: {
         enabled: (process.env.SWAGGER_ENABLED ?? 'true') === 'true',
         path: process.env.SWAGGER_PATH ?? 'docs',
@@ -143,5 +151,10 @@ export default () => {
     notification: {
       broadcastBatchSize: parseInt(process.env.NOTIFICATION_BROADCAST_BATCH_SIZE ?? '500', 10),
     } satisfies NotificationConfig,
+    socialAuth: {
+      naver: { clientId: process.env.NAVER_CLIENT_ID, clientSecret: process.env.NAVER_CLIENT_SECRET },
+      kakao: { clientId: process.env.KAKAO_CLIENT_ID, clientSecret: process.env.KAKAO_CLIENT_SECRET },
+      google: { clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET },
+    } satisfies SocialAuthConfig,
   };
 };

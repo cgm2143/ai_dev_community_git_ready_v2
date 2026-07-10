@@ -22,7 +22,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'DevHub — AI 개발자 커뮤니티',
+  title: '코비온 — AI 개발자 커뮤니티',
   description: '터미널처럼 빠르고, Discord처럼 활기차고, 디시처럼 즉각적인 개발자 게시판',
 };
 

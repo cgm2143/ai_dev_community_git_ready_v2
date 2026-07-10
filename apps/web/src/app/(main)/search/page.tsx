@@ -45,7 +45,7 @@ export default function SearchPage() {
         <>
           <p className="text-sm text-text-secondary">
             <span className="font-semibold text-text-primary">&ldquo;{q}&rdquo;</span> 검색 결과{' '}
-            {data && <Pagination page={page} limit={PAGE_SIZE} total={data.meta.total} onPageChange={setPage} />}
+            {data ? `${data.meta?.total ?? 0}건` : ''}
           </p>
 
           <PostList
@@ -55,7 +55,7 @@ export default function SearchPage() {
             emptyMessage="검색 결과가 없습니다. 다른 키워드로 시도해 보세요."
           />
 
-          {data && <Pagination page={page} limit={PAGE_SIZE} total={data.meta.total} onPageChange={setPage} />}
+          {data && <Pagination page={page} limit={PAGE_SIZE} total={data.meta?.total ?? 0} onPageChange={setPage} />}
         </>
       ) : (
         <p className="rounded-card border border-border-hairline bg-bg-surface p-6 text-center text-sm text-text-secondary">

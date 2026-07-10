@@ -39,6 +39,10 @@ const LIST_SELECT = {
   isNotice: true,
   postTags: { select: { tag: { select: { name: true } } } },
   createdAt: true,
+  // status/deletedAt은 목록 응답(DTO)에는 노출되지 않지만(toListItem에서 매핑 안 함),
+  // fetchPublishedPostOrThrow() 등 내부 검증 로직이 이 값을 필요로 해서 select에 포함해야 한다.
+  // 실제 Prisma Client가 생성되는 배포 환경에서만 드러나는 타입 오류였다(샌드박스는 Prisma
+  // 엔진 다운로드가 막혀 있어 이 누락을 컴파일 타임에 잡아내지 못했다).
   status: true,
   deletedAt: true,
 } satisfies Prisma.PostSelect;

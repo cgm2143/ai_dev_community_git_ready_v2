@@ -6,6 +6,11 @@
 //  3) 모든 PK는 UUID v7 (dbgenerated, 시간순 정렬 가능) 사용
 //  4) 회원 탈퇴는 물리 삭제 대신 익명화 처리 (passwordHash nullable 등)
 
+// Alpine(musl libc) 런타임에 배포할 때, node:20-alpine 최신 버전은 OpenSSL 3.x를 쓴다.
+// binaryTargets를 명시하지 않으면 Prisma가 자동 감지에 실패해 "Could not parse schema
+// engine response" 오류를 낼 수 있어(감지 로직이 배포 환경마다 일관되지 않음), 정확한
+// 엔진 바이너리를 명시적으로 지정해 이 문제를 원천 차단한다. "native"는 로컬 개발(Docker
+// 밖에서 직접 실행할 때)을 위해 그대로 유지한다.
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
@@ -96,6 +101,7 @@ model User {
   visits            Visit[]
   createdBannedWords BannedWord[]
   createdIpBans      IpBan[]
+  socialAccounts     SocialAccount[]
 
   @@index([status])
   @@map("users")
@@ -569,6 +575,31 @@ model IpBan {
   creator User @relation(fields: [createdBy], references: [id])
 
   @@map("ip_bans")
+}
+
+enum SocialProvider {
+  NAVER
+  KAKAO
+  GOOGLE
+}
+
+/**
+ * 소셜 로그인 연동 정보. 한 사용자가 여러 제공자를 동시에 연동할 수 있도록 User와 별도 테이블로
+ * 분리했다(1:N). (provider, providerUserId) 조합이 실제 "그 소셜 계정이 곧 이 앱의 어떤 회원인지"를
+ * 결정하는 유일한 키다 - 이메일이 나중에 바뀌어도 이 매핑은 유지된다.
+ */
+model SocialAccount {
+  id             String         @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  provider       SocialProvider
+  providerUserId String         @map("provider_user_id")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("social_accounts")
 }
 
 enum AiAnalysisType {

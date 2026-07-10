@@ -9,6 +9,11 @@ RUN npm ci
 # ---- build: Prisma Client 생성 + TypeScript 빌드 ----
 FROM node:20-alpine AS build
 WORKDIR /app
+# Prisma가 OpenSSL 버전을 감지할 때 `openssl` 커맨드라인 도구를 직접 실행해서 확인하는데,
+# node:20-alpine 기본 이미지에는 이 도구(바이너리)가 빠져 있어(라이브러리 자체는 있음)
+# 감지에 실패하고 잘못된 버전(1.1.x)으로 잘못 추측한 뒤, 실제로는 맞지 않는 엔진을 실행하려다
+# "Could not parse schema engine response... is not valid JSON" 오류로 이어진다.
+# openssl 패키지를 설치해 감지 도구 자체를 제공하면 정확한 버전(3.x)을 잡아낸다.
 RUN apk add --no-cache openssl
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -28,6 +33,7 @@ RUN npx prisma generate --schema=prisma/schema.prisma
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+# 런타임에도 docker-entrypoint.sh가 `prisma migrate deploy`를 실행하므로 여기도 필요하다.
 RUN apk add --no-cache openssl
 RUN addgroup -S nodejs && adduser -S nestjs -G nodejs
 
