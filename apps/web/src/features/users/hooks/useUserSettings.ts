@@ -52,7 +52,7 @@ export function useWithdrawAccount() {
   const clearSession = useAuthStore((state) => state.clearSession);
 
   return useMutation({
-    mutationFn: (password: string) => withdrawAccount(password),
+    mutationFn: (password?: string) => withdrawAccount(password),
     onSuccess: () => {
       clearSession();
       router.push('/');
