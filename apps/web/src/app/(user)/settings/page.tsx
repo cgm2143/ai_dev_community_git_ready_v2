@@ -227,7 +227,7 @@ function WithdrawSection() {
           <div className="flex flex-col gap-2">
             <Input
               type="password"
-              placeholder="비밀번호 확인"
+              placeholder="비밀번호 확인 (소셜 로그인으로 가입하셨다면 비워두세요)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -243,8 +243,8 @@ function WithdrawSection() {
               <Button
                 variant="danger"
                 size="sm"
-                onClick={() => withdrawMutation.mutate(password)}
-                disabled={withdrawMutation.isPending || !password}
+                onClick={() => withdrawMutation.mutate(password || undefined)}
+                disabled={withdrawMutation.isPending}
               >
                 {withdrawMutation.isPending ? '처리 중...' : '탈퇴 확정'}
               </Button>
