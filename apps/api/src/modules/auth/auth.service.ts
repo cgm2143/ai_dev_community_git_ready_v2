@@ -195,7 +195,14 @@ export class AuthService {
     });
 
     if (existingLink) {
-      return this.finalizeSocialLogin(existingLink.user, context);
+      if (existingLink.user.status === UserStatus.WITHDRAWN) {
+        // 이 소셜 계정이 예전에 연동됐던 회원이 이미 탈퇴한 상태다. 연동 정보를 그대로 두면
+        // 이 소셜 계정으로는 영영 다시 로그인/가입할 수 없게 되므로(탈퇴 사용자로 계속 인식됨),
+        // 낡은 연동 링크를 지우고 아래의 "신규 가입" 경로로 자연스럽게 이어지게 한다.
+        await this.prisma.socialAccount.delete({ where: { id: existingLink.id } });
+      } else {
+        return this.finalizeSocialLogin(existingLink.user, context);
+      }
     }
 
     let user = email

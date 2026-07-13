@@ -23,6 +23,11 @@ export class NaverStrategy extends PassportStrategy(Strategy, 'naver') {
     });
   }
 
+  /** 네이버는 auth_type=reprompt를 넘기면 이미 로그인된 상태여도 다시 계정 확인 화면을 보여준다. */
+  authorizationParams(): Record<string, string> {
+    return { auth_type: 'reprompt' };
+  }
+
   validate(accessToken: string, refreshToken: string, profile: Profile): SocialProfile {
     return {
       providerUserId: profile.id,

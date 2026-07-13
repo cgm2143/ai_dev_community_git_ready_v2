@@ -583,11 +583,8 @@ enum SocialProvider {
   GOOGLE
 }
 
-/**
- * 소셜 로그인 연동 정보. 한 사용자가 여러 제공자를 동시에 연동할 수 있도록 User와 별도 테이블로
- * 분리했다(1:N). (provider, providerUserId) 조합이 실제 "그 소셜 계정이 곧 이 앱의 어떤 회원인지"를
- * 결정하는 유일한 키다 - 이메일이 나중에 바뀌어도 이 매핑은 유지된다.
- */
+// 소셜 로그인 연동 정보. 한 사용자가 여러 제공자를 동시에 연동할 수 있도록 User와 별도 테이블로 분리했다(1:N).
+// (provider, providerUserId) 조합이 실제 "그 소셜 계정이 곧 이 앱의 어떤 회원인지"를 결정하는 유일한 키다.
 model SocialAccount {
   id             String         @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
   userId         String         @map("user_id") @db.Uuid

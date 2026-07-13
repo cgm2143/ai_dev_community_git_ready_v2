@@ -2,6 +2,7 @@ import { api, apiFetchMultipart } from '@/lib/api-client';
 import type { AuthUser } from '@/stores/auth-store';
 
 export interface PublicProfile {
+  id: string;
   nickname: string;
   bio: string | null;
   profileImageUrl: string | null;
@@ -41,8 +42,8 @@ export function uploadProfileImage(file: File): Promise<UploadedProfileImage> {
   return apiFetchMultipart<UploadedProfileImage>('/users/me/profile-image', formData);
 }
 
-export function withdrawAccount(password: string) {
-  return api.delete<void>('/users/me', { password });
+export function withdrawAccount(password?: string) {
+  return api.delete<void>('/users/me', password ? { password } : undefined);
 }
 
 export interface BlockedUser {

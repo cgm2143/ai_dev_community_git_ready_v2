@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { UserRound } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
+import { useProfile } from '@/features/users/hooks/useProfile';
 import {
   useUpdateProfile,
   useChangePassword,
@@ -42,6 +43,7 @@ type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 function ProfileSection() {
   const user = useAuthStore((state) => state.user);
+  const { data: profile } = useProfile(user?.nickname ?? '');
   const updateMutation = useUpdateProfile();
   const uploadMutation = useUploadProfileImage();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -49,11 +51,21 @@ function ProfileSection() {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
-    values: { nickname: user?.nickname ?? '', bio: '' },
+    defaultValues: { nickname: '', bio: '' },
   });
+
+  // profile 쿼리가 로드된 "그 순간에만" 폼 값을 채운다 - 매 렌더링마다 새 객체를 넘기는
+  // 방식(values prop)은 react-hook-form이 그때마다 폼을 초기화해버려 입력 중이던 내용이
+  // 계속 지워지는 문제가 있었다. reset()은 이 effect가 실행될 때 딱 한 번만 값을 채운다.
+  React.useEffect(() => {
+    if (profile) {
+      reset({ nickname: profile.nickname, bio: profile.bio ?? '' });
+    }
+  }, [profile, reset]);
 
   return (
     <Card>
@@ -95,6 +107,14 @@ function ProfileSection() {
               {uploadMutation.isPending ? '업로드 중...' : '프로필 이미지 변경'}
             </Button>
             <p className="mt-1 text-xs text-text-muted">JPG/PNG/WebP, 최대 5MB</p>
+            {uploadMutation.isError && (
+              <p className="mt-1 text-xs text-accent-danger">
+                {uploadMutation.error instanceof ApiError
+                  ? uploadMutation.error.message
+                  : '이미지 업로드에 실패했습니다. 스토리지 설정을 확인해 주세요.'}
+              </p>
+            )}
+            {uploadMutation.isSuccess && <p className="mt-1 text-xs text-accent-ai-teal">변경되었습니다.</p>}
           </div>
         </div>
 
@@ -108,6 +128,11 @@ function ProfileSection() {
             <Label htmlFor="bio">소개글</Label>
             <Input id="bio" {...register('bio')} placeholder="자기소개를 입력해 주세요" />
           </div>
+          {updateMutation.isError && (
+            <p className="text-xs text-accent-danger">
+              {updateMutation.error instanceof ApiError ? updateMutation.error.message : '저장에 실패했습니다.'}
+            </p>
+          )}
           {updateMutation.isSuccess && <p className="text-xs text-accent-ai-teal">저장되었습니다.</p>}
           <div className="flex justify-end">
             <Button type="submit" variant="primary" size="sm" disabled={updateMutation.isPending}>
@@ -227,7 +252,7 @@ function WithdrawSection() {
           <div className="flex flex-col gap-2">
             <Input
               type="password"
-              placeholder="비밀번호 확인"
+              placeholder="비밀번호 확인 (소셜 로그인으로 가입하셨다면 비워두세요)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -243,8 +268,8 @@ function WithdrawSection() {
               <Button
                 variant="danger"
                 size="sm"
-                onClick={() => withdrawMutation.mutate(password)}
-                disabled={withdrawMutation.isPending || !password}
+                onClick={() => withdrawMutation.mutate(password || undefined)}
+                disabled={withdrawMutation.isPending}
               >
                 {withdrawMutation.isPending ? '처리 중...' : '탈퇴 확정'}
               </Button>

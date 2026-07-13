@@ -28,6 +28,9 @@ export class MyProfileResponseDto {
 
 export class PublicProfileResponseDto {
   @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
   nickname!: string;
 
   @ApiPropertyOptional({ nullable: true })

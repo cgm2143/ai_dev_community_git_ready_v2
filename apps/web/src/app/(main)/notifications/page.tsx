@@ -12,7 +12,7 @@ export default function NotificationsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-xl font-semibold text-text-primary">
-          알림 {data && data.meta.unreadCount > 0 && `(${data.meta.unreadCount})`}
+          알림 {data && (data.meta?.unreadCount ?? 0) > 0 && `(${data.meta?.unreadCount})`}
         </h1>
         <Button variant="ghost" size="sm" onClick={() => markAllAsRead.mutate()} disabled={markAllAsRead.isPending}>
           모두 읽음 처리

@@ -16,7 +16,7 @@ export function Header() {
   const router = useRouter();
   const [query, setQuery] = React.useState('');
   const { data: notifications } = useNotifications(false, Boolean(user));
-  const unreadCount = user ? (notifications?.meta.unreadCount ?? 0) : 0;
+  const unreadCount = user ? (notifications?.meta?.unreadCount ?? 0) : 0;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
