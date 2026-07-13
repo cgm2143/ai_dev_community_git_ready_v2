@@ -54,6 +54,7 @@ export class UsersService {
     }
 
     return {
+      id: user.id,
       nickname: user.nickname,
       bio: user.bio,
       profileImageUrl: user.profileImageUrl,
