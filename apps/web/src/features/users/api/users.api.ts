@@ -2,6 +2,7 @@ import { api, apiFetchMultipart } from '@/lib/api-client';
 import type { AuthUser } from '@/stores/auth-store';
 
 export interface PublicProfile {
+  id: string;
   nickname: string;
   bio: string | null;
   profileImageUrl: string | null;
