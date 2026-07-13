@@ -19,6 +19,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     });
   }
 
+
   /**
    * 기본값으로는 브라우저에 구글 로그인이 이미 되어 있으면(계정이 1개뿐일 때)
    * 계정 선택 화면 없이 곧바로 로그인시켜 버린다. 매번 "어느 계정으로 로그인할지"
@@ -29,6 +30,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     return { prompt: 'select_account' };
   }
 
+  
   validate(accessToken: string, refreshToken: string, profile: Profile, done: VerifyCallback): void {
     const socialProfile: SocialProfile = {
       providerUserId: profile.id,

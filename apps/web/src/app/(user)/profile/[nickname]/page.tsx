@@ -11,8 +11,10 @@ import { Button } from '@/components/ui/button';
 export default function ProfilePage({ params }: { params: { nickname: string } }) {
   const { data: profile, isLoading, isError } = useProfile(params.nickname);
   const currentUser = useAuthStore((state) => state.user);
+
   // 닉네임 문자열(특히 한글)은 유니코드 정규화 차이 등으로 겉보기엔 같아도 비교가
   // 어긋날 수 있어, 훨씬 안정적인 회원 ID로 "내 프로필인지"를 판단한다.
+
   const isOwnProfile = Boolean(currentUser && profile && currentUser.id === profile.id);
 
   if (isLoading) {

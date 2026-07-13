@@ -160,6 +160,7 @@ export class UsersService {
    * - refresh_tokens: 물리 삭제 (인증 정보이므로 완전 제거)
    * - posts/comments: 그대로 유지 (author_id 보존, 화면에는 "삭제된 회원"으로 표시)
    */
+
   async withdraw(userId: string, password?: string): Promise<void> {
     const user = await this.findActiveUserOrThrow(userId);
 
@@ -167,6 +168,8 @@ export class UsersService {
     // 이미 유효한 로그인 세션(Access Token)으로 인증된 상태이므로, 이 경우엔 비밀번호
     // 확인 없이 탈퇴를 허용한다 - 그렇지 않으면 어떤 값을 넣어도 영원히 탈퇴가 불가능해진다.
     // 반대로 이메일/비밀번호로 가입한 계정은 지금처럼 비밀번호 확인을 그대로 요구한다.
+
+
     if (user.passwordHash) {
       if (!password || !(await this.passwordService.compare(password, user.passwordHash))) {
         throw new AppException(ErrorCode.INVALID_CREDENTIALS, '비밀번호가 일치하지 않습니다.');
@@ -191,9 +194,12 @@ export class UsersService {
         },
       }),
       this.prisma.refreshToken.deleteMany({ where: { userId } }),
+
       // 소셜 로그인 연동도 같이 끊어야 한다 - 안 그러면 이 계정과 연동된 네이버/카카오/구글
       // 계정으로 이후에 다시 로그인을 시도할 때, "이미 탈퇴한 계정"으로 막혀서 그 소셜
       // 계정 자체를 영영 다시 쓸 수 없게 되는 문제가 생긴다.
+
+
       this.prisma.socialAccount.deleteMany({ where: { userId } }),
     ]);
 
