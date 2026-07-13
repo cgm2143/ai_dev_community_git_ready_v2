@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 export default function ProfilePage({ params }: { params: { nickname: string } }) {
   const { data: profile, isLoading, isError } = useProfile(params.nickname);
   const currentUser = useAuthStore((state) => state.user);
-  const isOwnProfile = currentUser?.nickname === params.nickname;
+  const isOwnProfile = currentUser?.nickname.normalize('NFC') === params.nickname.normalize('NFC');
 
   if (isLoading) {
     return <div className="h-40 animate-pulse rounded-card bg-bg-surface-muted" />;
