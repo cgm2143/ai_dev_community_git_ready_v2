@@ -83,7 +83,7 @@ function ProfileSection() {
               className="rounded-lg object-cover"
             />
           ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-bg-surface-muted">
+            <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-bg-surface-muted">
               <UserRound className="h-7 w-7 text-text-muted" />
             </div>
           )}
