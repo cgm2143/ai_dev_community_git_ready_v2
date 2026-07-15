@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema, type RegisterFormValues } from '@/schemas/auth.schema';
 import { useRegister } from '@/features/auth/hooks/useRegister';
 import { TermsAgreement } from '@/components/auth/TermsAgreement';
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -76,6 +77,13 @@ export default function RegisterPage() {
             {registerMutation.isPending ? '가입 처리 중...' : '가입하기'}
           </Button>
         </form>
+
+        <div className="my-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-border-hairline" />
+          <span className="text-xs text-text-muted">또는 소셜 계정으로 계속하기</span>
+          <div className="h-px flex-1 bg-border-hairline" />
+        </div>
+        <SocialLoginButtons />
 
         <div className="mt-5 text-center text-sm text-text-secondary">
           이미 계정이 있으신가요?{' '}
