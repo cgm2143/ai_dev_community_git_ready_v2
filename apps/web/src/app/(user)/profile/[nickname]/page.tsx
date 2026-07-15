@@ -38,10 +38,10 @@ export default function ProfilePage({ params }: { params: { nickname: string } }
             alt={profile.nickname}
             width={72}
             height={72}
-            className="rounded-full object-cover"
+            className="rounded-lg object-cover"
           />
         ) : (
-          <div className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-bg-surface-muted">
+          <div className="flex h-[72px] w-[72px] items-center justify-center rounded-lg bg-bg-surface-muted">
             <UserRound className="h-8 w-8 text-text-muted" />
           </div>
         )}
