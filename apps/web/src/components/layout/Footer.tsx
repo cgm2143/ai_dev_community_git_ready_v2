@@ -12,8 +12,8 @@ const FOOTER_LINKS = [
 export function Footer() {
   return (
     <footer className="mt-auto border-t border-border-hairline bg-bg-surface">
-      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-3 px-4 py-6">
-        <nav className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="mx-auto flex w-full max-w-[1280px] flex-col items-center gap-3 px-4 py-6 text-center">
+        <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
           {FOOTER_LINKS.map((link) => (
             <Link
               key={link.href}
