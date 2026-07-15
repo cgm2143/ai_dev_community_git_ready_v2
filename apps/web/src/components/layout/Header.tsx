@@ -71,7 +71,6 @@ export function Header() {
                 {logoutMutation.isPending ? '...' : '로그아웃'}
               </Button>
             </>
-            </>
           ) : (
             <>
               <Button variant="ghost" size="sm" asChild>
