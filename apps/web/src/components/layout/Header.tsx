@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Bell, Search } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
@@ -60,7 +61,18 @@ export function Header() {
                 </Link>
               </Button>
               <Button variant="ghost" size="sm" asChild>
-                <Link href={`/profile/${user.nickname}`}>{user.nickname}</Link>
+                <Link href={`/profile/${user.nickname}`} className="flex items-center gap-2">
+                  {user.profileImageUrl ? (
+                    <Image
+                      src={user.profileImageUrl}
+                      alt={user.nickname}
+                      width={24}
+                      height={24}
+                      className="rounded-md object-cover"
+                    />
+                  ) : null}
+                  {user.nickname}
+                </Link>
               </Button>
               <Button
                 variant="ghost"
