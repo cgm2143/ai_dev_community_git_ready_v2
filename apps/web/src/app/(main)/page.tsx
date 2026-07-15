@@ -12,6 +12,7 @@ export default function HomePage() {
 
   return (
     <>
+      <AdSlot slotCode="HEADER_TOP" />
       <div className="flex items-center justify-between">
         <h1 className="font-display text-xl font-semibold text-text-primary">최신 글</h1>
         <Button variant="primary" size="sm" asChild>
