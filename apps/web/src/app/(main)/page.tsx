@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { PenSquare } from 'lucide-react';
 import { usePosts } from '@/features/posts/hooks/usePosts';
 import { PostList } from '@/components/post/PostList';
+import { AdSlot } from '@/components/ads/AdSlot';
 import { Button } from '@/components/ui/button';
 
 export default function HomePage() {
