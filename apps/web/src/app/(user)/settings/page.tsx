@@ -74,13 +74,13 @@ function ProfileSection() {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex items-center gap-4">
-          {user?.profileImageUrl ? (
+          {profile?.profileImageUrl ? (
             <Image
-              src={user.profileImageUrl}
-              alt={user.nickname}
+              src={profile.profileImageUrl}
+              alt={profile.nickname}
               width={64}
               height={64}
-              className="rounded-full object-cover"
+              className="rounded-lg object-cover"
             />
           ) : (
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-bg-surface-muted">
