@@ -31,8 +31,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     // 기본값은 라이트모드. 다크모드는 헤더의 수동 토글로만 전환한다(5단계 UI 설계 정책).
     <html lang="ko" className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
-      <body className="font-body">
-        <Providers>{children}</Providers>
+      <body className="flex min-h-screen flex-col font-body">
+        <Providers>
+          <div className="flex flex-1 flex-col">{children}</div>
+          <Footer />
+        </Providers>
       </body>
     </html>
   );
