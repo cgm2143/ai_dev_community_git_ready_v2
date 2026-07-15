@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Bell, Search } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
+import { useLogout } from '@/features/auth/hooks/useLogout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Logo } from './Logo';
@@ -14,6 +15,7 @@ import { ThemeToggle } from './ThemeToggle';
 export function Header() {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
+  const logoutMutation = useLogout();
   const [query, setQuery] = React.useState('');
   const { data: notifications } = useNotifications(false, Boolean(user));
   const unreadCount = user ? (notifications?.meta?.unreadCount ?? 0) : 0;
@@ -60,6 +62,15 @@ export function Header() {
               <Button variant="ghost" size="sm" asChild>
                 <Link href={`/profile/${user.nickname}`}>{user.nickname}</Link>
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => logoutMutation.mutate()}
+                disabled={logoutMutation.isPending}
+              >
+                {logoutMutation.isPending ? '...' : '로그아웃'}
+              </Button>
+            </>
             </>
           ) : (
             <>
