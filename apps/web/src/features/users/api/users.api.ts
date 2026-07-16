@@ -42,6 +42,11 @@ export function uploadProfileImage(file: File): Promise<UploadedProfileImage> {
   return apiFetchMultipart<UploadedProfileImage>('/users/me/profile-image', formData);
 }
 
+/** 프로필 이미지를 삭제하고 기본 이미지로 되돌린다. 갱신된 내 프로필을 반환한다. */
+export function deleteProfileImage() {
+  return api.delete<AuthUser>('/users/me/profile-image');
+}
+
 export function withdrawAccount(password?: string) {
   return api.delete<void>('/users/me', password ? { password } : undefined);
 }

@@ -81,6 +81,13 @@ export class UsersController {
     return this.usersService.uploadProfileImage(user.id, file);
   }
 
+  @Delete('me/profile-image')
+  @ApiOperation({ summary: '프로필 이미지 삭제 (기본 이미지로 변경, 스토리지의 원본/썸네일도 정리)' })
+  @ApiResponse({ status: 200, type: MyProfileResponseDto })
+  async deleteProfileImage(@CurrentUser() user: AuthenticatedUser) {
+    return this.usersService.deleteProfileImage(user.id);
+  }
+
   @Delete('me')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: '회원 탈퇴 (물리 삭제 대신 익명화, 비밀번호 확인 필요)' })
