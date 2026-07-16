@@ -13,6 +13,7 @@ import {
   useUpdateProfile,
   useChangePassword,
   useUploadProfileImage,
+  useDeleteProfileImage,
   useWithdrawAccount,
   useBlockedUsers,
   useUnblockUser,
@@ -46,6 +47,7 @@ function ProfileSection() {
   const { data: profile } = useProfile(user?.nickname ?? '');
   const updateMutation = useUpdateProfile();
   const uploadMutation = useUploadProfileImage();
+  const deleteImageMutation = useDeleteProfileImage();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const {
@@ -98,14 +100,26 @@ function ProfileSection() {
                 if (file) uploadMutation.mutate(file);
               }}
             />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadMutation.isPending}
-            >
-              {uploadMutation.isPending ? '업로드 중...' : '프로필 이미지 변경'}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadMutation.isPending || deleteImageMutation.isPending}
+              >
+                {uploadMutation.isPending ? '업로드 중...' : '프로필 이미지 변경'}
+              </Button>
+              {profile?.profileImageUrl && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => deleteImageMutation.mutate()}
+                  disabled={uploadMutation.isPending || deleteImageMutation.isPending}
+                >
+                  {deleteImageMutation.isPending ? '변경 중...' : '기본 이미지로'}
+                </Button>
+              )}
+            </div>
             <p className="mt-1 text-xs text-text-muted">JPG/PNG/WebP, 최대 5MB</p>
             {uploadMutation.isError && (
               <p className="mt-1 text-xs text-accent-danger">
@@ -115,6 +129,16 @@ function ProfileSection() {
               </p>
             )}
             {uploadMutation.isSuccess && <p className="mt-1 text-xs text-accent-ai-teal">변경되었습니다.</p>}
+            {deleteImageMutation.isError && (
+              <p className="mt-1 text-xs text-accent-danger">
+                {deleteImageMutation.error instanceof ApiError
+                  ? deleteImageMutation.error.message
+                  : '기본 이미지로 변경에 실패했습니다.'}
+              </p>
+            )}
+            {deleteImageMutation.isSuccess && (
+              <p className="mt-1 text-xs text-accent-ai-teal">기본 이미지로 변경되었습니다.</p>
+            )}
           </div>
         </div>
 

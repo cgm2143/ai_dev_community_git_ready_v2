@@ -154,6 +154,30 @@ export class UsersService {
   }
 
   /**
+   * 프로필 이미지를 제거하고 기본(이니셜/아이콘) 이미지 상태로 되돌린다.
+   * User.profileImageUrl을 null로 갱신하고, 스토리지에 남은 원본/썸네일 오브젝트는
+   * 업로드 시 교체 정리와 동일한 ProfileImageCleanupService에 위임해 정리한다.
+   */
+  async deleteProfileImage(userId: string) {
+    const user = await this.findActiveUserOrThrow(userId);
+
+    // 이미 기본 이미지 상태라면 스토리지 정리 없이 현재 프로필을 그대로 반환한다(멱등).
+    if (!user.profileImageUrl) {
+      return this.toMyProfile(user);
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { profileImageUrl: null },
+      include: { role: true },
+    });
+
+    this.profileImageCleanupService.scheduleCleanup(userId, user.profileImageUrl);
+
+    return this.toMyProfile(updated);
+  }
+
+  /**
    * 회원 탈퇴 - 물리 삭제 대신 익명화 (6단계 DB 설계에서 확정한 정책).
    * - email/nickname: UNIQUE 제약을 유지하면서 식별 불가능한 값으로 치환
    * - passwordHash/emailVerifiedAt/lastLoginAt: null (로그인 및 인증 정보 완전 제거)
