@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -66,6 +67,23 @@ export function SocialLoginButtons() {
         </span>
         Google로 로그인
       </a>
+
+      {/*
+        소셜 로그인으로 처음 가입하는 사용자는 이메일 회원가입 폼의 약관 동의 절차(TermsAgreement)를
+        거치지 않는다. 그래서 소셜 버튼 바로 아래에 "계속 진행 시 약관에 동의한 것으로 간주" 안내와
+        약관/개인정보처리방침 링크를 노출해, 동의 사실을 명시적으로 고지한다(간편가입 방식).
+      */}
+      <p className="mt-1 text-center text-xs leading-relaxed text-text-muted">
+        소셜 계정으로 계속 진행하면{' '}
+        <Link href="/terms" className="underline hover:text-text-secondary">
+          이용약관
+        </Link>
+        과{' '}
+        <Link href="/privacy" className="underline hover:text-text-secondary">
+          개인정보처리방침
+        </Link>
+        에 동의하는 것으로 간주됩니다.
+      </p>
     </div>
   );
 }
