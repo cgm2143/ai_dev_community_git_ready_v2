@@ -33,15 +33,18 @@ export function useChangePassword() {
 }
 
 export function useUploadProfileImage() {
+  const queryClient = useQueryClient();
   const setSession = useAuthStore((state) => state.setSession);
   const accessToken = useAuthStore((state) => state.accessToken);
   const user = useAuthStore((state) => state.user);
-
   return useMutation({
     mutationFn: (file: File) => uploadProfileImage(file),
     onSuccess: (result) => {
       if (accessToken && user) {
         setSession(accessToken, { ...user, profileImageUrl: result.profileImageUrl });
+        // 프로필 조회 캐시도 함께 무효화한다. store만 갱신하면 useProfile을 쓰는 화면
+        // (설정/프로필 페이지)은 옛 이미지를 계속 보여준다.
+        void queryClient.invalidateQueries({ queryKey: ['profile', user.nickname] });
       }
     },
   });
