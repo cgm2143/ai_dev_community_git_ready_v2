@@ -259,6 +259,7 @@ export class UsersService {
     nickname: string;
     bio: string | null;
     profileImageUrl: string | null;
+    passwordHash: string | null;
     emailVerifiedAt: Date | null;
     createdAt: Date;
     role: { name: string };
@@ -271,6 +272,9 @@ export class UsersService {
       profileImageUrl: user.profileImageUrl,
       role: user.role.name,
       emailVerified: user.emailVerifiedAt !== null,
+      // 소셜 전용 계정은 passwordHash가 null이다. 프론트가 이 값으로 회원 탈퇴 화면에서
+      // 비밀번호 입력칸을 보일지(비밀번호 계정) 숨길지(소셜 전용) 결정한다.
+      hasPassword: user.passwordHash !== null,
       createdAt: user.createdAt,
     };
   }

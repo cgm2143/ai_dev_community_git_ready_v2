@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
+  getMe,
   updateProfile,
   changePassword,
   uploadProfileImage,
@@ -14,6 +15,11 @@ import {
   type ChangePasswordPayload,
 } from '../api/users.api';
 import { useAuthStore } from '@/stores/auth-store';
+
+export function useMe() {
+  const accessToken = useAuthStore((state) => state.accessToken);
+  return useQuery({ queryKey: ['me'], queryFn: getMe, enabled: Boolean(accessToken) });
+}
 
 export function useUpdateProfile() {
   const setSession = useAuthStore((state) => state.setSession);
