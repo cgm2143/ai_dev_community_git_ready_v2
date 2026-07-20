@@ -1,6 +1,16 @@
 #!/bin/sh
 set -e
 
+# APP_ROLE로 프로세스 역할을 결정한다(미설정 시 api).
+#  - api    : DB 스키마 동기화 후 HTTP 서버 기동
+#  - worker : 마이그레이션은 api 서비스가 담당하므로 건너뛰고 Worker만 기동
+APP_ROLE="${APP_ROLE:-api}"
+
+if [ "$APP_ROLE" = "worker" ]; then
+  echo "[entrypoint] APP_ROLE=worker - 마이그레이션을 건너뛰고 Worker를 시작합니다."
+  exec node dist/worker.main.js
+fi
+
 # schema.prisma가 uuid_generate_v7()이라는 커스텀 Postgres 함수를 기본값으로 사용하는데,
 # 이 함수는 Postgres가 기본 제공하지 않는다(직접 정의해야 함). 로컬 docker-compose 환경에서는
 # postgres 이미지의 initdb 스크립트로 최초 1회 자동 생성되지만, Railway 같은 관리형 Postgres는

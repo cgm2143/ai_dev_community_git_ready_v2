@@ -71,6 +71,19 @@ PostgreSQL/Redis/MinIO는 로컬에 직접 설치하거나, `docker compose up p
 
 ---
 
+## AI 기능 & Worker 운영
+
+AI 요약/태그 추천과 그 운영 구조(Queue/Worker 분리, 관측성, DLQ, 비용 보호)는 **[docs/ai-architecture.md](docs/ai-architecture.md)** 를 참고하세요.
+
+- **프로세스 역할 분리**: `APP_ROLE=api`(HTTP 서버) / `APP_ROLE=worker`(BullMQ Worker). 미설정 시 `api`.
+- 로컬: 터미널 2개로 `npm run start:dev`(API) + `npm run start:worker:dev`(Worker).
+- 프로덕션: `npm start`(API) + `npm run start:worker`(Worker). 동일 이미지·동일 entrypoint가 `APP_ROLE`로 분기합니다.
+- **Railway**: 리포/이미지를 공유하는 **2개 서비스**(`community-api`, `community-worker`)로 배포하고 Redis·PostgreSQL을 공유합니다. worker 서비스에 `APP_ROLE=worker`를 설정하고 healthcheck는 비웁니다(HTTP 미노출). 마이그레이션은 api 서비스만 수행합니다.
+- **AI 활성화**: `ANTHROPIC_API_KEY`가 있으면 Anthropic, 없으면 Stub로 자동 폴백. 모델/파라미터/프롬프트 버전/비용 한도는 모두 환경변수로 관리합니다.
+- **관측/운영 API**: `GET /admin/ai/metrics`, `GET /admin/ai/dead-letters`, `POST /admin/ai/dead-letters/:id/requeue`.
+
+---
+
 ## 시드 데이터
 
 `prisma/seed.ts`가 다음을 생성합니다:

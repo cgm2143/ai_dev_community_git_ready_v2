@@ -72,6 +72,10 @@ export interface AiConfig {
   // 프롬프트 버전. 값이 바뀌면 기존 AI 캐시(AiAnalysis)가 자동으로 무효화된다.
   summaryPromptVersion: string;
   tagPromptVersion: string;
+  // 비용 보호(Cost Guard) 한도. 0이면 비활성. 현재는 차단하지 않고 경고 로그만 남긴다.
+  dailyCostLimit: number;
+  monthlyCostLimit: number;
+  requestLimitPerHour: number;
 }
 
 /**
@@ -185,6 +189,9 @@ export default () => {
       maxRetries: parseInt(process.env.AI_MAX_RETRIES ?? '2', 10),
       summaryPromptVersion: process.env.SUMMARY_PROMPT_VERSION ?? 'v1',
       tagPromptVersion: process.env.TAG_PROMPT_VERSION ?? 'v1',
+      dailyCostLimit: parseFloat(process.env.AI_DAILY_COST_LIMIT ?? '0'),
+      monthlyCostLimit: parseFloat(process.env.AI_MONTHLY_COST_LIMIT ?? '0'),
+      requestLimitPerHour: parseInt(process.env.AI_REQUEST_LIMIT_PER_HOUR ?? '0', 10),
     } satisfies AiConfig,
   };
 };

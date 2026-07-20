@@ -9,6 +9,7 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { AppConfig } from './config/configuration';
+import { bootstrapWorker } from './worker.main';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
@@ -67,4 +68,14 @@ async function bootstrap(): Promise<void> {
   await app.listen(appConfig.port);
 }
 
-bootstrap();
+// APP_ROLE로 프로세스 역할을 결정한다. 미설정이면 'api'. worker면 HTTP 서버 대신 Worker를 구동한다.
+const role = (process.env.APP_ROLE ?? 'api').toLowerCase();
+if (role === 'worker') {
+  bootstrapWorker().catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error('[Worker] 부트스트랩 실패:', err);
+    process.exit(1);
+  });
+} else {
+  bootstrap();
+}
