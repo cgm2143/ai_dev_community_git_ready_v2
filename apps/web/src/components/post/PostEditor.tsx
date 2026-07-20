@@ -4,12 +4,24 @@ import * as React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { marked } from 'marked';
+import { Sparkles } from 'lucide-react';
 import { postFormSchema, type PostFormValues } from '@/schemas/post.schema';
 import { useCategories } from '@/features/boards/hooks/useCategories';
+import { useSuggestTags } from '@/features/ai/hooks/useSuggestTags';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError } from '@/lib/api-error';
+
+const MAX_TAGS = 5;
+
+/** 쉼표 구분 태그 문자열을 배열로 파싱한다(트림, 빈 값 제거). */
+function parseTags(input: string): string[] {
+  return input
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
 
 interface PostEditorProps {
   defaultValues?: Partial<PostFormValues>;
@@ -41,14 +53,30 @@ export function PostEditor({ defaultValues, onSubmit, isSubmitting, error, submi
   });
 
   const content = watch('content');
+  const title = watch('title');
   const previewHtml = React.useMemo(() => (content ? marked.parse(content, { async: false }) : ''), [content]);
 
+  // AI 태그 추천: 결과를 칩으로 보여주고, 사용자가 클릭한 것만 태그 입력에 반영한다(자동 저장 없음).
+  const suggestMutation = useSuggestTags();
+  const [suggestedTags, setSuggestedTags] = React.useState<string[]>([]);
+  const canSuggest = title.trim().length > 0 && content.trim().length > 0;
+
+  const handleSuggestTags = () => {
+    suggestMutation.mutate(
+      { title, content },
+      { onSuccess: (res) => setSuggestedTags(res.tags) },
+    );
+  };
+
+  const applyTag = (tag: string) => {
+    const current = parseTags(tagsInput);
+    if (current.includes(tag) || current.length >= MAX_TAGS) return;
+    setTagsInput([...current, tag].join(', '));
+    setSuggestedTags((prev) => prev.filter((t) => t !== tag));
+  };
+
   const submit = handleSubmit((values) => {
-    const tags = tagsInput
-      .split(',')
-      .map((tag) => tag.trim())
-      .filter(Boolean)
-      .slice(0, 5);
+    const tags = parseTags(tagsInput).slice(0, MAX_TAGS);
     onSubmit({ ...values, tags });
   });
 
@@ -110,13 +138,47 @@ export function PostEditor({ defaultValues, onSubmit, isSubmitting, error, submi
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="tags">태그 (쉼표로 구분, 최대 5개)</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="tags">태그 (쉼표로 구분, 최대 5개)</Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleSuggestTags}
+            disabled={!canSuggest || suggestMutation.isPending}
+          >
+            <Sparkles className="h-4 w-4" />
+            {suggestMutation.isPending ? '추천 중…' : 'AI 태그 추천'}
+          </Button>
+        </div>
         <Input
           id="tags"
           value={tagsInput}
           onChange={(e) => setTagsInput(e.target.value)}
           placeholder="nestjs, typescript"
         />
+
+        {suggestMutation.isError && (
+          <p className="text-xs text-text-muted">AI 태그 추천을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+        )}
+        {suggestMutation.isSuccess && suggestedTags.length === 0 && (
+          <p className="text-xs text-text-muted">추천할 태그를 찾지 못했습니다.</p>
+        )}
+        {suggestedTags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-text-muted">추천:</span>
+            {suggestedTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => applyTag(tag)}
+                className="rounded-full border border-accent-primary/40 bg-accent-primary/5 px-2.5 py-1 text-xs text-accent-primary-strong transition-colors hover:bg-accent-primary/10"
+              >
+                + {tag}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {error !== undefined && (

@@ -12,9 +12,10 @@ import { BlocksModule } from '../blocks/blocks.module';
 import { AttachmentsModule } from '../attachments/attachments.module';
 import { AdminWordFilterModule } from '../admin/word-filter/admin-word-filter.module';
 import { RankingModule } from '../ranking/ranking.module';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
-  imports: [MarkdownModule, BlocksModule, AttachmentsModule, AdminWordFilterModule, RankingModule],
+  imports: [MarkdownModule, BlocksModule, AttachmentsModule, AdminWordFilterModule, RankingModule, AiModule],
   controllers: [PostsController, AdminPostsController, TagsController],
   providers: [
     PostsService,

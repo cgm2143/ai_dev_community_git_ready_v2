@@ -4,6 +4,7 @@ import { usePost } from '@/features/posts/hooks/usePost';
 import { PostDetail } from '@/components/post/PostDetail';
 import { CommentList } from '@/components/comment/CommentList';
 import { Breadcrumb } from '@/components/common/Breadcrumb';
+import { AiSummaryCard } from '@/components/ai/AiSummaryCard';
 
 /** 게시글 상세 인터랙티브 본문(반응/댓글 등). 메타데이터/404는 서버 page.tsx가 담당한다. */
 export function PostDetailView({ postId }: { postId: string }) {
@@ -24,6 +25,7 @@ export function PostDetailView({ postId }: { postId: string }) {
   return (
     <div className="flex flex-col gap-6">
       <Breadcrumb items={[{ label: post.boardName, href: `/boards/${post.boardSlug}` }]} />
+      <AiSummaryCard postId={post.id} />
       <PostDetail post={post} />
       <CommentList postId={post.id} />
     </div>
