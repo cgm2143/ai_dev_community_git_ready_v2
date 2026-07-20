@@ -51,6 +51,22 @@ function ProfileSection() {
   const deleteImageMutation = useDeleteProfileImage();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  // 이미지 변경은 "선택 즉시 업로드"가 아니라 저장 버튼을 눌러야 반영한다.
+  // stagedFile: 새로 올릴 파일(미리보기용), stagedRemove: 기본 이미지로 되돌리려는 의도.
+  const [stagedFile, setStagedFile] = React.useState<File | null>(null);
+  const [stagedRemove, setStagedRemove] = React.useState(false);
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!stagedFile) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(stagedFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [stagedFile]);
+
   const {
     register,
     handleSubmit,
@@ -70,6 +86,31 @@ function ProfileSection() {
     }
   }, [profile, reset]);
 
+  const currentImageUrl = profile?.profileImageUrl ?? null;
+  const displayImageUrl = previewUrl ?? (stagedRemove ? null : currentImageUrl);
+  const hasStagedImageChange = stagedFile !== null || stagedRemove;
+  const isSaving = updateMutation.isPending || uploadMutation.isPending || deleteImageMutation.isPending;
+
+  const clearStagedImage = () => {
+    setStagedFile(null);
+    setStagedRemove(false);
+  };
+
+  // 저장 시: 스테이징된 이미지 변경(업로드/삭제)을 먼저 반영한 뒤 닉네임/소개글을 저장한다.
+  const onSubmit = async (values: ProfileFormValues) => {
+    try {
+      if (stagedFile) {
+        await uploadMutation.mutateAsync(stagedFile);
+      } else if (stagedRemove) {
+        await deleteImageMutation.mutateAsync();
+      }
+      await updateMutation.mutateAsync(values);
+      clearStagedImage();
+    } catch {
+      // 개별 실패 메시지는 각 mutation의 isError로 표시된다.
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -77,14 +118,26 @@ function ProfileSection() {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex items-center gap-4">
-          {profile?.profileImageUrl ? (
-            <Image
-              src={profile.profileImageUrl}
-              alt={profile.nickname}
-              width={64}
-              height={64}
-              className="rounded-lg object-cover"
-            />
+          {displayImageUrl ? (
+            previewUrl ? (
+              // 로컬 미리보기(blob URL)는 next/image 최적화 대상이 아니라 일반 img로 렌더한다.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={previewUrl}
+                alt={profile?.nickname ?? '프로필 미리보기'}
+                width={64}
+                height={64}
+                className="h-16 w-16 rounded-lg object-cover"
+              />
+            ) : (
+              <Image
+                src={displayImageUrl}
+                alt={profile?.nickname ?? ''}
+                width={64}
+                height={64}
+                className="rounded-lg object-cover"
+              />
+            )
           ) : (
             <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-bg-surface-muted">
               <UserRound className="h-7 w-7 text-text-muted" />
@@ -98,30 +151,43 @@ function ProfileSection() {
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) uploadMutation.mutate(file);
+                if (file) {
+                  setStagedFile(file);
+                  setStagedRemove(false);
+                }
+                // 같은 파일을 다시 골라도 onChange가 발생하도록 입력값을 비운다.
+                e.target.value = '';
               }}
             />
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadMutation.isPending || deleteImageMutation.isPending}
-              >
-                {uploadMutation.isPending ? '업로드 중...' : '프로필 이미지 변경'}
+              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isSaving}>
+                프로필 이미지 변경
               </Button>
-              {profile?.profileImageUrl && (
+              {displayImageUrl && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => deleteImageMutation.mutate()}
-                  disabled={uploadMutation.isPending || deleteImageMutation.isPending}
+                  onClick={() => {
+                    setStagedRemove(true);
+                    setStagedFile(null);
+                  }}
+                  disabled={isSaving}
                 >
-                  {deleteImageMutation.isPending ? '변경 중...' : '기본 이미지로'}
+                  기본 이미지로
+                </Button>
+              )}
+              {hasStagedImageChange && (
+                <Button variant="ghost" size="sm" onClick={clearStagedImage} disabled={isSaving}>
+                  변경 취소
                 </Button>
               )}
             </div>
             <p className="mt-1 text-xs text-text-muted">JPG/PNG/WebP, 최대 5MB</p>
+            {hasStagedImageChange && (
+              <p className="mt-1 text-xs text-accent-ai-teal">
+                {stagedRemove ? '기본 이미지로 변경 예정' : '새 이미지 선택됨'} — 아래 저장을 눌러야 반영됩니다.
+              </p>
+            )}
             {uploadMutation.isError && (
               <p className="mt-1 text-xs text-accent-danger">
                 {uploadMutation.error instanceof ApiError
@@ -129,7 +195,6 @@ function ProfileSection() {
                   : '이미지 업로드에 실패했습니다. 스토리지 설정을 확인해 주세요.'}
               </p>
             )}
-            {uploadMutation.isSuccess && <p className="mt-1 text-xs text-accent-ai-teal">변경되었습니다.</p>}
             {deleteImageMutation.isError && (
               <p className="mt-1 text-xs text-accent-danger">
                 {deleteImageMutation.error instanceof ApiError
@@ -137,13 +202,10 @@ function ProfileSection() {
                   : '기본 이미지로 변경에 실패했습니다.'}
               </p>
             )}
-            {deleteImageMutation.isSuccess && (
-              <p className="mt-1 text-xs text-accent-ai-teal">기본 이미지로 변경되었습니다.</p>
-            )}
           </div>
         </div>
 
-        <form onSubmit={handleSubmit((values) => updateMutation.mutate(values))} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="nickname">닉네임</Label>
             <Input id="nickname" {...register('nickname')} />
@@ -158,10 +220,12 @@ function ProfileSection() {
               {updateMutation.error instanceof ApiError ? updateMutation.error.message : '저장에 실패했습니다.'}
             </p>
           )}
-          {updateMutation.isSuccess && <p className="text-xs text-accent-ai-teal">저장되었습니다.</p>}
+          {updateMutation.isSuccess && !hasStagedImageChange && (
+            <p className="text-xs text-accent-ai-teal">저장되었습니다.</p>
+          )}
           <div className="flex justify-end">
-            <Button type="submit" variant="primary" size="sm" disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? '저장 중...' : '저장'}
+            <Button type="submit" variant="primary" size="sm" disabled={isSaving}>
+              {isSaving ? '저장 중...' : '저장'}
             </Button>
           </div>
         </form>
