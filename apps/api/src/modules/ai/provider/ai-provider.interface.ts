@@ -5,6 +5,12 @@
  */
 export const AI_PROVIDER = Symbol('AI_PROVIDER');
 
+/** LLM 호출 토큰 사용량. 관측 로그/비용 계산에 사용한다. */
+export interface AiUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
 export interface SummarizeInput {
   title: string;
   content: string;
@@ -13,6 +19,7 @@ export interface SummarizeInput {
 }
 export interface SummarizeResult {
   summary: string;
+  usage?: AiUsage;
 }
 
 export interface SuggestTagsInput {
@@ -23,6 +30,7 @@ export interface SuggestTagsInput {
 }
 export interface SuggestTagsResult {
   tags: string[];
+  usage?: AiUsage;
 }
 
 export interface RelatedPostsInput {

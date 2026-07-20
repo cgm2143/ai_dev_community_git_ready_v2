@@ -69,6 +69,9 @@ export interface AiConfig {
   maxTokens: number;
   timeoutMs: number;
   maxRetries: number;
+  // 프롬프트 버전. 값이 바뀌면 기존 AI 캐시(AiAnalysis)가 자동으로 무효화된다.
+  summaryPromptVersion: string;
+  tagPromptVersion: string;
 }
 
 /**
@@ -180,6 +183,8 @@ export default () => {
       maxTokens: parseInt(process.env.AI_MAX_TOKENS ?? '1024', 10),
       timeoutMs: parseInt(process.env.AI_TIMEOUT_MS ?? '20000', 10),
       maxRetries: parseInt(process.env.AI_MAX_RETRIES ?? '2', 10),
+      summaryPromptVersion: process.env.SUMMARY_PROMPT_VERSION ?? 'v1',
+      tagPromptVersion: process.env.TAG_PROMPT_VERSION ?? 'v1',
     } satisfies AiConfig,
   };
 };
