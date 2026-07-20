@@ -7,7 +7,6 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { PasswordService } from './services/password.service';
 import { TokenService } from './services/token.service';
-import { EmailVerificationService } from './services/email-verification.service';
 import { UserStatus, SocialProvider } from '@prisma/client';
 
 export interface RequestContext {
@@ -27,13 +26,12 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
-    private readonly emailVerificationService: EmailVerificationService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(AuthService.name);
   }
 
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterDto, context: RequestContext): Promise<TokenPair> {
     const [existingEmail, existingNickname] = await Promise.all([
       this.prisma.user.findUnique({ where: { email: dto.email } }),
       this.prisma.user.findUnique({ where: { nickname: dto.nickname } }),
@@ -54,27 +52,25 @@ export class AuthService {
 
     const passwordHash = await this.passwordService.hash(dto.password);
 
+    // 이메일 인증 절차를 제거했으므로(사용자 요청) 가입 즉시 인증된 상태로 생성하고,
+    // 일반 로그인과 동일하게 토큰을 발급해 가입과 동시에 로그인 처리한다.
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
         passwordHash,
         nickname: dto.nickname,
         roleId: defaultRole.id,
+        emailVerifiedAt: new Date(),
       },
+      include: { role: true },
     });
 
     this.logger.info({ userId: user.id }, '신규 회원가입');
 
-    // 회원가입 직후 인증 메일을 발송한다. 메일 전송 자체의 실패는 EmailVerificationService
-    // 내부에서 흡수하지만, 쿨다운(RATE_LIMIT_EXCEEDED) 등 서비스 레벨 예외는 여기서 한 번 더
-    // 방어적으로 흡수해 회원가입 자체가 실패하지 않도록 한다 (극히 드문 동시 가입 시도 등 예외 상황 대비).
-    try {
-      await this.emailVerificationService.sendVerificationEmail(user.email);
-    } catch (error) {
-      this.logger.warn({ err: error, userId: user.id }, '회원가입 직후 인증 메일 발송 요청이 거부되었습니다.');
-    }
-
-    return { id: user.id, email: user.email, nickname: user.nickname };
+    return this.issueTokenPair(
+      { id: user.id, email: user.email, nickname: user.nickname, role: user.role.name },
+      context,
+    );
   }
 
   async login(dto: LoginDto, context: RequestContext): Promise<TokenPair> {

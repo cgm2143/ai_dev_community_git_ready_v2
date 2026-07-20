@@ -41,9 +41,16 @@ export class AuthController {
   @Public()
   @Throttle({ default: { limit: 5, ttl: 10 * 60 * 1000 } }) // IP당 10분에 5회 - 대량 계정 생성 방지
   @Post('register')
-  @ApiOperation({ summary: '회원가입' })
-  async register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  @ApiOperation({ summary: '회원가입 (이메일 인증 없이 가입 즉시 로그인 처리)' })
+  @ApiResponse({ status: 201, type: AccessTokenResponseDto })
+  async register(
+    @Body() dto: RegisterDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AccessTokenResponseDto> {
+    const result = await this.authService.register(dto, this.extractContext(req));
+    this.setRefreshCookie(res, result.refreshToken);
+    return { accessToken: result.accessToken, user: result.user };
   }
 
   @Public()
