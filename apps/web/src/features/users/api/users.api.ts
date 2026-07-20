@@ -13,6 +13,24 @@ export function getPublicProfile(nickname: string) {
   return api.get<PublicProfile>(`/users/${nickname}`);
 }
 
+export interface MyProfile {
+  id: string;
+  email: string;
+  nickname: string;
+  bio: string | null;
+  profileImageUrl: string | null;
+  role: string;
+  emailVerified: boolean;
+  /** 비밀번호가 설정된 계정인지 여부. 소셜 전용 계정은 false. */
+  hasPassword: boolean;
+  createdAt: string;
+}
+
+/** 내 프로필 조회(비공개 필드 포함). 회원 탈퇴 화면에서 hasPassword 판별 등에 사용. */
+export function getMe() {
+  return api.get<MyProfile>('/users/me');
+}
+
 export interface UpdateProfilePayload {
   nickname?: string;
   bio?: string;

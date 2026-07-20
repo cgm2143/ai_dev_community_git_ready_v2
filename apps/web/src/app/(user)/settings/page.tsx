@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useRequireAuth } from '@/features/auth/hooks/useRequireAuth';
 import { useProfile } from '@/features/users/hooks/useProfile';
 import {
+  useMe,
   useUpdateProfile,
   useChangePassword,
   useUploadProfileImage,
@@ -255,9 +256,15 @@ function BlockedUsersSection() {
 }
 
 function WithdrawSection() {
+  const { data: me } = useMe();
   const [password, setPassword] = React.useState('');
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const withdrawMutation = useWithdrawAccount();
+
+  // me 로딩 전에는 안전하게 "비밀번호 계정"으로 간주해 입력칸을 보여준다(소셜 계정이면
+  // 곧 me가 로드되며 칸이 사라진다). 소셜 전용 계정(hasPassword=false)은 비밀번호 확인
+  // 없이 바로 탈퇴한다.
+  const hasPassword = me?.hasPassword ?? true;
 
   return (
     <Card className="border-accent-danger/40">
@@ -274,12 +281,21 @@ function WithdrawSection() {
           </Button>
         ) : (
           <div className="flex flex-col gap-2">
-            <Input
-              type="password"
-              placeholder="비밀번호 확인 (소셜 로그인으로 가입하셨다면 비워두세요)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            {hasPassword ? (
+              <>
+                <Input
+                  type="password"
+                  placeholder="비밀번호를 입력해 주세요"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <p className="text-xs text-text-muted">본인 확인을 위해 계정 비밀번호를 입력해 주세요.</p>
+              </>
+            ) : (
+              <p className="text-xs text-text-muted">
+                소셜 로그인 전용 계정이라 비밀번호 확인 없이 바로 탈퇴됩니다.
+              </p>
+            )}
             {withdrawMutation.isError && (
               <p className="text-xs text-accent-danger">
                 {withdrawMutation.error instanceof ApiError ? withdrawMutation.error.message : '탈퇴에 실패했습니다.'}
@@ -292,8 +308,8 @@ function WithdrawSection() {
               <Button
                 variant="danger"
                 size="sm"
-                onClick={() => withdrawMutation.mutate(password || undefined)}
-                disabled={withdrawMutation.isPending}
+                onClick={() => withdrawMutation.mutate(hasPassword ? password || undefined : undefined)}
+                disabled={withdrawMutation.isPending || (hasPassword && !password)}
               >
                 {withdrawMutation.isPending ? '처리 중...' : '탈퇴 확정'}
               </Button>
