@@ -13,9 +13,11 @@ import { WordFilterService } from '../admin/word-filter/word-filter.service';
 import { TagsService } from './services/tags.service';
 import { PostViewService } from './services/post-view.service';
 import { PostsSearchRepository } from './services/posts-search.repository';
+import { RankingService, RankingPeriod } from '../ranking/ranking.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { QueryPostDto } from './dto/query-post.dto';
+import { RankingType } from './dto/ranking-query.dto';
 
 const EXCERPT_LENGTH = 150;
 
@@ -71,6 +73,7 @@ export class PostsService {
     private readonly postsSearchRepository: PostsSearchRepository,
     private readonly permissionCheckService: PermissionCheckService,
     private readonly wordFilterService: WordFilterService,
+    private readonly rankingService: RankingService,
   ) {}
 
   async findAll(query: QueryPostDto, viewerId?: string) {
@@ -89,6 +92,23 @@ export class PostsService {
       deletedAt: null,
       ...(query.boardId ? { boardId: query.boardId } : {}),
       ...(query.tag ? { postTags: { some: { tag: { name: query.tag } } } } : {}),
+      ...(query.category ? { board: { category: { slug: query.category } } } : {}),
+      ...(query.tags
+        ? {
+            postTags: {
+              some: {
+                tag: {
+                  name: {
+                    in: query.tags
+                      .split(',')
+                      .map((name) => name.trim())
+                      .filter((name) => name.length > 0),
+                  },
+                },
+              },
+            },
+          }
+        : {}),
       ...(blockedAuthorIds.length > 0 ? { authorId: { notIn: blockedAuthorIds } } : {}),
     };
 
@@ -137,6 +157,48 @@ export class PostsService {
 
     const postsById = new Map(posts.map((post) => [post.id, post]));
     return ids.map((id) => postsById.get(id)).filter((post): post is PostListRow => Boolean(post)).map((post) => this.toListItem(post));
+  }
+
+  /**
+   * 범용 랭킹 조회. type=hot은 시간 가중치 랭킹(RankingService)을, 나머지는 해당 카운트
+   * 내림차순을 반환한다(period가 있으면 그 기간 내 작성글로 한정). 결과는 목록 아이템 배열이다.
+   */
+  async findRanking(type: RankingType, period: RankingPeriod | undefined, limit: number, viewerId?: string) {
+    if (type === 'hot') {
+      const ids = await this.rankingService.getTopPostIds(period ?? 'daily', limit);
+      return this.findManyByIds(ids, viewerId);
+    }
+
+    const blockedAuthorIds = viewerId ? await this.blockService.getBlockedUserIds(viewerId) : [];
+    const windowStart = period ? this.rankingWindowStart(period) : undefined;
+
+    const orderBy: Prisma.PostOrderByWithRelationInput[] = [
+      type === 'views'
+        ? { viewCount: 'desc' }
+        : type === 'comments'
+          ? { commentCount: 'desc' }
+          : { likeCount: 'desc' },
+      { createdAt: 'desc' },
+    ];
+
+    const posts = await this.prisma.post.findMany({
+      where: {
+        status: PostStatus.PUBLISHED,
+        deletedAt: null,
+        ...(windowStart ? { createdAt: { gte: windowStart } } : {}),
+        ...(blockedAuthorIds.length > 0 ? { authorId: { notIn: blockedAuthorIds } } : {}),
+      },
+      orderBy,
+      take: limit,
+      select: LIST_SELECT,
+    });
+
+    return posts.map((post) => this.toListItem(post));
+  }
+
+  private rankingWindowStart(period: RankingPeriod): Date {
+    const hours = period === 'daily' ? 24 : period === 'weekly' ? 24 * 7 : 24 * 30;
+    return new Date(Date.now() - hours * 60 * 60 * 1000);
   }
 
   private async searchByKeyword(
