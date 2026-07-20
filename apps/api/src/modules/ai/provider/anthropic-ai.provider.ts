@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import { PinoLogger } from 'nestjs-pino';
+import { z } from 'zod';
 import { AiConfig } from '../../../config/configuration';
 import {
   AiProvider,
@@ -18,6 +19,9 @@ import {
 } from './ai-provider.interface';
 import { SUMMARY_SYSTEM_PROMPT, buildSummaryUserPrompt } from '../prompts/summary.prompt';
 import { buildTagSystemPrompt, buildTagUserPrompt } from '../prompts/tag.prompt';
+
+/** LLM 태그 응답 런타임 검증 스키마. 문자열 배열이 아니면 안전 기본값([])으로 폴백한다. */
+const TAG_ARRAY_SCHEMA = z.array(z.string());
 
 /**
  * Anthropic 실제 구현체. 모델/temperature/maxTokens/timeout/retry는 모두 ConfigService(ai)에서 읽는다.
@@ -58,7 +62,7 @@ export class AnthropicAiProvider implements AiProvider {
       messages: [{ role: 'user', content: buildSummaryUserPrompt(input.title, input.content) }],
     });
 
-    return { summary: this.extractText(message).trim() };
+    return { summary: this.extractText(message).trim(), usage: this.extractUsage(message) };
   }
 
   async suggestTags(input: SuggestTagsInput): Promise<SuggestTagsResult> {
@@ -71,7 +75,7 @@ export class AnthropicAiProvider implements AiProvider {
     });
 
     const text = this.extractText(message);
-    return { tags: this.parseTagArray(text) };
+    return { tags: this.parseTagArray(text), usage: this.extractUsage(message) };
   }
 
   // ── 아래 세 기능은 Phase 5-1 범위 밖이라 인터페이스 충족용 안전 기본값만 반환한다.
@@ -94,14 +98,28 @@ export class AnthropicAiProvider implements AiProvider {
       .trim();
   }
 
-  /** 모델이 반환한 JSON 배열 문자열을 안전하게 파싱한다. 실패하면 빈 배열을 반환한다. */
+  private extractUsage(message: Anthropic.Message) {
+    return {
+      inputTokens: message.usage?.input_tokens ?? 0,
+      outputTokens: message.usage?.output_tokens ?? 0,
+    };
+  }
+
+  /**
+   * 모델이 반환한 JSON 배열 문자열을 파싱하고 Zod로 런타임 검증한다.
+   * 파싱/검증 실패 시 예외 대신 안전 기본값([])을 반환해 태그 추천이 게시글 작성 흐름을 막지 않도록 한다.
+   */
   private parseTagArray(text: string): string[] {
     const match = text.match(/\[[\s\S]*\]/);
     if (!match) return [];
     try {
-      const parsed = JSON.parse(match[0]);
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter((v): v is string => typeof v === 'string');
+      const parsed: unknown = JSON.parse(match[0]);
+      const result = TAG_ARRAY_SCHEMA.safeParse(parsed);
+      if (!result.success) {
+        this.logger.warn({ text }, 'AI 태그 추천 응답이 스키마에 맞지 않습니다. 빈 목록으로 폴백합니다.');
+        return [];
+      }
+      return result.data;
     } catch (err) {
       this.logger.warn({ err, text }, 'AI 태그 추천 응답 JSON 파싱에 실패했습니다.');
       return [];
