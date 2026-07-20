@@ -40,3 +40,19 @@ export const RANKING_RECALCULATION_QUEUE_NAME = 'ranking-recalculation';
 export const RANKING_RECALCULATION_JOB_NAME = 'recalculate-all';
 /** BullMQ 반복 작업 주기 - 인기글 랭킹 전체 재검증(증분 갱신 오차 보정)을 5분마다 수행한다. */
 export const RANKING_RECALCULATION_INTERVAL_MS = 5 * 60 * 1000;
+
+export const DEAD_LETTER_QUEUE = Symbol('DEAD_LETTER_QUEUE');
+export const DEAD_LETTER_QUEUE_NAME = 'dead-letter';
+
+/**
+ * 최종 실패(모든 재시도 소진)한 Job을 보관하는 Dead Letter Queue 페이로드.
+ * 원래 큐/작업/데이터/실패 사유를 함께 저장해 관리자가 원본 큐로 재실행(requeue)할 수 있게 한다.
+ */
+export interface DeadLetterJobData {
+  originalQueue: string;
+  jobName: string;
+  data: unknown;
+  failedReason: string;
+  attemptsMade: number;
+  failedAt: string;
+}

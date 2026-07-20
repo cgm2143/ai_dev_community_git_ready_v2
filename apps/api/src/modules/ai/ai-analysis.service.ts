@@ -5,11 +5,12 @@ import { PinoLogger } from 'nestjs-pino';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { AiConfig } from '../../config/configuration';
 import { AI_PROVIDER, AiProvider, AiUsage } from './provider/ai-provider.interface';
-import { AiSummaryQueueService } from './queue/ai-summary-queue.service';
+import { AiSummaryQueueService } from '../../infra/queue/ai-summary-queue.service';
 import { SUMMARY_SYSTEM_PROMPT } from './prompts/summary.prompt';
 import { TAG_PROMPT_RULES } from './prompts/tag.prompt';
 import { buildPromptSignature, PromptSignature } from './prompt-signature.util';
 import { estimateCost } from './ai-cost.util';
+import { AiCostGuardService } from './ai-cost-guard.service';
 
 export type SummaryStatus = 'ready' | 'pending' | 'unavailable';
 
@@ -36,6 +37,7 @@ export class AiAnalysisService {
     private readonly prisma: PrismaService,
     @Inject(AI_PROVIDER) private readonly aiProvider: AiProvider,
     private readonly summaryQueue: AiSummaryQueueService,
+    private readonly costGuard: AiCostGuardService,
     private readonly configService: ConfigService,
     private readonly logger: PinoLogger,
   ) {
@@ -106,6 +108,8 @@ export class AiAnalysisService {
     });
     if (!post) return;
 
+    await this.costGuard.warnIfExceeded();
+
     const startedAt = Date.now();
     try {
       const { summary, usage } = await this.aiProvider.summarize({ title: post.title, content: post.content });
@@ -165,6 +169,8 @@ export class AiAnalysisService {
       take: EXISTING_TAG_SAMPLE,
       select: { name: true },
     });
+
+    await this.costGuard.warnIfExceeded();
 
     const startedAt = Date.now();
     try {

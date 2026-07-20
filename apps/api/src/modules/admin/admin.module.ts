@@ -7,6 +7,7 @@ import { AdminSettingsModule } from './settings/admin-settings.module';
 import { AdminStatsModule } from './stats/admin-stats.module';
 import { AdminLogsModule } from './logs/admin-logs.module';
 import { AdminAdsModule } from './ads/admin-ads.module';
+import { AdminAiModule } from './ai/admin-ai.module';
 
 /**
  * 10단계(Admin) 전체를 묶는 최상위 모듈. 각 관리 영역(회원/공지/금칙어/IP 차단/설정/통계/로그/광고)을
@@ -27,6 +28,7 @@ import { AdminAdsModule } from './ads/admin-ads.module';
     AdminStatsModule,
     AdminLogsModule,
     AdminAdsModule,
+    AdminAiModule,
   ],
   exports: [AdminIpBansModule],
 })
