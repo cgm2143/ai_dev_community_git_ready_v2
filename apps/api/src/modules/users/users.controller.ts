@@ -21,7 +21,6 @@ import { MAX_IMAGE_SIZE_BYTES } from '../../common/utils/image-validation.util';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import { WithdrawAccountDto } from './dto/withdraw-account.dto';
 import { MyProfileResponseDto, PublicProfileResponseDto } from './dto/user-response.dto';
 import { ProfileImageResponseDto } from './dto/profile-image.dto';
 import { BlockedUserResponseDto } from '../blocks/dto/blocked-user-response.dto';
@@ -90,9 +89,11 @@ export class UsersController {
 
   @Delete('me')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: '회원 탈퇴 (물리 삭제 대신 익명화, 비밀번호 확인 필요)' })
-  async withdraw(@CurrentUser() user: AuthenticatedUser, @Body() dto: WithdrawAccountDto): Promise<void> {
-    await this.usersService.withdraw(user.id, dto.password);
+  @ApiOperation({
+    summary: '회원 탈퇴 (물리 삭제 대신 익명화. 로그인 세션으로 인증되므로 비밀번호 재확인은 요구하지 않음)',
+  })
+  async withdraw(@CurrentUser() user: AuthenticatedUser): Promise<void> {
+    await this.usersService.withdraw(user.id);
   }
 
   @Get('me/blocks')

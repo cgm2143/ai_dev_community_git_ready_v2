@@ -321,20 +321,14 @@ function BlockedUsersSection() {
 
 function WithdrawSection() {
   const { data: me } = useMe();
-  const [password, setPassword] = React.useState('');
   const [confirmText, setConfirmText] = React.useState('');
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const withdrawMutation = useWithdrawAccount();
 
-  // me 로딩 전에는 안전하게 "비밀번호 계정"으로 간주해 입력칸을 보여준다(소셜 계정이면
-  // 곧 me가 로드되며 칸이 사라진다). 비밀번호가 없는 소셜 전용 계정(hasPassword=false)은
-  // 비밀번호로 본인 확인을 할 수 없으므로(OAuth 로그인은 우리 서버에 비밀번호를 저장하지
-  // 않는다), 대신 자신의 닉네임을 그대로 입력해야 탈퇴가 확정된다.
-  const hasPassword = me?.hasPassword ?? true;
+  // 탈퇴는 로그인된 상태(Access Token)에서만 가능하므로 비밀번호를 다시 묻지 않고,
+  // 실수 방지를 위해 계정 유형과 무관하게 본인 닉네임을 정확히 입력하면 확정한다.
   const confirmWord = me?.nickname ?? '';
-  const canWithdraw = hasPassword
-    ? Boolean(password)
-    : confirmWord.length > 0 && confirmText.trim() === confirmWord;
+  const canWithdraw = confirmWord.length > 0 && confirmText.trim() === confirmWord;
 
   return (
     <Card className="border-accent-danger/40">
@@ -351,29 +345,15 @@ function WithdrawSection() {
           </Button>
         ) : (
           <div className="flex flex-col gap-2">
-            {hasPassword ? (
-              <>
-                <Input
-                  type="password"
-                  placeholder="비밀번호를 입력해 주세요"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <p className="text-xs text-text-muted">본인 확인을 위해 계정 비밀번호를 입력해 주세요.</p>
-              </>
-            ) : (
-              <>
-                <Input
-                  value={confirmText}
-                  onChange={(e) => setConfirmText(e.target.value)}
-                  placeholder={confirmWord ? `닉네임 "${confirmWord}" 입력` : '닉네임을 입력해 주세요'}
-                />
-                <p className="text-xs text-text-muted">
-                  소셜 로그인 전용 계정은 비밀번호가 없어, 확인을 위해 닉네임{' '}
-                  <span className="font-semibold text-text-secondary">{confirmWord}</span>을(를) 입력해 주세요.
-                </p>
-              </>
-            )}
+            <Input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={confirmWord ? `닉네임 "${confirmWord}" 입력` : '닉네임을 입력해 주세요'}
+            />
+            <p className="text-xs text-text-muted">
+              탈퇴를 확정하려면 본인 닉네임{' '}
+              <span className="font-semibold text-text-secondary">{confirmWord}</span>을(를) 입력해 주세요.
+            </p>
             {withdrawMutation.isError && (
               <p className="text-xs text-accent-danger">
                 {withdrawMutation.error instanceof ApiError ? withdrawMutation.error.message : '탈퇴에 실패했습니다.'}
@@ -386,7 +366,7 @@ function WithdrawSection() {
               <Button
                 variant="danger"
                 size="sm"
-                onClick={() => withdrawMutation.mutate(hasPassword ? password || undefined : undefined)}
+                onClick={() => withdrawMutation.mutate(undefined)}
                 disabled={withdrawMutation.isPending || !canWithdraw}
               >
                 {withdrawMutation.isPending ? '처리 중...' : '탈퇴 확정'}

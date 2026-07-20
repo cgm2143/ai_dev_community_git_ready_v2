@@ -185,20 +185,12 @@ export class UsersService {
    * - posts/comments: 그대로 유지 (author_id 보존, 화면에는 "삭제된 회원"으로 표시)
    */
 
-  async withdraw(userId: string, password?: string): Promise<void> {
-    const user = await this.findActiveUserOrThrow(userId);
+  async withdraw(userId: string): Promise<void> {
+    await this.findActiveUserOrThrow(userId);
 
-    // 소셜 로그인으로만 가입한 계정은 애초에 비밀번호 자체가 없다(passwordHash: null).
-    // 이미 유효한 로그인 세션(Access Token)으로 인증된 상태이므로, 이 경우엔 비밀번호
-    // 확인 없이 탈퇴를 허용한다 - 그렇지 않으면 어떤 값을 넣어도 영원히 탈퇴가 불가능해진다.
-    // 반대로 이메일/비밀번호로 가입한 계정은 지금처럼 비밀번호 확인을 그대로 요구한다.
-
-
-    if (user.passwordHash) {
-      if (!password || !(await this.passwordService.compare(password, user.passwordHash))) {
-        throw new AppException(ErrorCode.INVALID_CREDENTIALS, '비밀번호가 일치하지 않습니다.');
-      }
-    }
+    // 회원 탈퇴는 유효한 로그인 세션(Access Token)으로 인증된 상태에서만 호출되므로,
+    // 비밀번호를 다시 요구하지 않는다(소셜 전용 계정은 애초에 비밀번호가 없어 재확인 자체가
+    // 불가능하다). 실수 방지를 위한 본인 확인(닉네임 입력)은 프론트엔드에서 담당한다.
 
     const anonymizedSuffix = randomUUID().slice(0, 8);
 
