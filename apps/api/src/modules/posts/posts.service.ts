@@ -14,6 +14,7 @@ import { TagsService } from './services/tags.service';
 import { PostViewService } from './services/post-view.service';
 import { PostsSearchRepository } from './services/posts-search.repository';
 import { RankingService, RankingPeriod } from '../ranking/ranking.service';
+import { AiAnalysisService } from '../ai/ai-analysis.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { QueryPostDto } from './dto/query-post.dto';
@@ -74,6 +75,7 @@ export class PostsService {
     private readonly permissionCheckService: PermissionCheckService,
     private readonly wordFilterService: WordFilterService,
     private readonly rankingService: RankingService,
+    private readonly aiAnalysisService: AiAnalysisService,
   ) {}
 
   async findAll(query: QueryPostDto, viewerId?: string) {
@@ -334,6 +336,11 @@ export class PostsService {
         await this.attachmentsService.syncPostAttachments(tx, userId, postId, dto.attachmentIds);
       }
     });
+
+    // 제목/본문이 바뀌면 기존 AI 요약 캐시를 무효화한다(다음 상세 진입 시 새로 생성). AI 실패가 수정 자체를 막지 않도록 분리한다.
+    if (dto.title !== undefined || dto.content !== undefined) {
+      await this.aiAnalysisService.invalidateSummary(postId).catch(() => undefined);
+    }
 
     return this.fetchDetailWithoutRecordingView(postId, userId);
   }

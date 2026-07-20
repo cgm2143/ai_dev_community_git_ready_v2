@@ -58,6 +58,20 @@ export interface NotificationConfig {
 }
 
 /**
+ * AI 기능(요약/태그 추천 등) 설정. Temperature/MaxTokens/Timeout/Retry를 코드에 하드코딩하지 않고
+ * 모두 환경변수로 관리한다. apiKey가 비어 있으면 AiModule이 자동으로 StubProvider로 폴백한다.
+ */
+export interface AiConfig {
+  provider: string;
+  apiKey: string;
+  model: string;
+  temperature: number;
+  maxTokens: number;
+  timeoutMs: number;
+  maxRetries: number;
+}
+
+/**
  * Railway/Render/Heroku 같은 PaaS는 Redis를 개별 HOST/PORT/PASSWORD가 아니라
  * 단일 연결 문자열(REDIS_URL, 예: redis://default:password@host:6379)로 제공하는 경우가 많다.
  * 이 헬퍼는 URL이 있으면 그것을 우선 파싱하고, 없으면 기존 개별 환경변수 방식으로 폴백한다 -
@@ -156,5 +170,16 @@ export default () => {
       kakao: { clientId: process.env.KAKAO_CLIENT_ID, clientSecret: process.env.KAKAO_CLIENT_SECRET },
       google: { clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET },
     } satisfies SocialAuthConfig,
+    ai: {
+      provider: process.env.AI_PROVIDER ?? 'anthropic',
+      apiKey: process.env.ANTHROPIC_API_KEY ?? '',
+      // 요약/태그 추천은 짧고 빈번한 호출이므로 비용/속도 효율이 좋은 모델을 기본값으로 둔다.
+      // 필요 시 AI_MODEL 환경변수로 상위 모델로 교체할 수 있다.
+      model: process.env.AI_MODEL ?? 'claude-haiku-4-5',
+      temperature: parseFloat(process.env.AI_TEMPERATURE ?? '0.3'),
+      maxTokens: parseInt(process.env.AI_MAX_TOKENS ?? '1024', 10),
+      timeoutMs: parseInt(process.env.AI_TIMEOUT_MS ?? '20000', 10),
+      maxRetries: parseInt(process.env.AI_MAX_RETRIES ?? '2', 10),
+    } satisfies AiConfig,
   };
 };
