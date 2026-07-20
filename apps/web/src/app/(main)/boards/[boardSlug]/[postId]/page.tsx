@@ -1,28 +1,28 @@
-'use client';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { serverGet } from '@/lib/server-api';
+import { SITE_URL, SITE_NAME } from '@/lib/site';
+import type { PostDetail } from '@/features/posts/api/posts.api';
+import { PostDetailView } from './PostDetailView';
 
-import { usePost } from '@/features/posts/hooks/usePost';
-import { PostDetail } from '@/components/post/PostDetail';
-import { CommentList } from '@/components/comment/CommentList';
+type Params = { boardSlug: string; postId: string };
 
-export default function PostDetailPage({ params }: { params: { postId: string } }) {
-  const { data: post, isLoading, isError } = usePost(params.postId);
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const post = await serverGet<PostDetail>(`/posts/${params.postId}`);
+  if (!post) return { title: `게시글을 찾을 수 없습니다 — ${SITE_NAME}` };
+  const url = `${SITE_URL}/boards/${params.boardSlug}/${params.postId}`;
+  const description = (post.excerpt || post.title).slice(0, 160);
+  return {
+    title: `${post.title} — ${SITE_NAME}`,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title: post.title, description, url, type: 'article', siteName: SITE_NAME },
+    twitter: { card: 'summary', title: post.title, description },
+  };
+}
 
-  if (isLoading) {
-    return <div className="h-64 animate-pulse rounded-card bg-bg-surface-muted" />;
-  }
-
-  if (isError || !post) {
-    return (
-      <p className="rounded-card border border-border-hairline bg-bg-surface p-6 text-center text-sm text-text-secondary">
-        게시글을 찾을 수 없습니다. 삭제되었거나 존재하지 않는 게시글입니다.
-      </p>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-8">
-      <PostDetail post={post} />
-      <CommentList postId={post.id} />
-    </div>
-  );
+export default async function Page({ params }: { params: Params }) {
+  const post = await serverGet<PostDetail>(`/posts/${params.postId}`);
+  if (!post) notFound();
+  return <PostDetailView postId={params.postId} />;
 }

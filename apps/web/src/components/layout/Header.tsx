@@ -21,6 +21,7 @@ export function Header() {
   const logoutMutation = useLogout();
   const [query, setQuery] = React.useState('');
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [searchOpen, setSearchOpen] = React.useState(false);
   const { data: notifications } = useNotifications(false, Boolean(user));
   const unreadCount = user ? (notifications?.meta?.unreadCount ?? 0) : 0;
 
@@ -58,6 +59,16 @@ export function Header() {
         </form>
 
         <div className="flex items-center gap-1.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="검색"
+            className="md:hidden"
+            onClick={() => setSearchOpen(true)}
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+
           <ThemeToggle />
 
           {user ? (
@@ -116,6 +127,36 @@ export function Header() {
       </div>
 
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+
+      {/* 모바일 검색 오버레이 - 헤더에 검색창이 숨겨지는 좁은 화면에서 검색 아이콘으로 연다. */}
+      {searchOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSearchOpen(false)} />
+          <div className="absolute inset-x-0 top-0 border-b border-border-hairline bg-bg-surface p-3">
+            <form
+              onSubmit={(e) => {
+                handleSearchSubmit(e);
+                setSearchOpen(false);
+              }}
+              className="flex items-center gap-2"
+            >
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                <Input
+                  autoFocus
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="게시글, 태그, 회원 검색"
+                  className="pl-9"
+                />
+              </div>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setSearchOpen(false)}>
+                닫기
+              </Button>
+            </form>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

@@ -1,23 +1,22 @@
-'use client';
+import type { Metadata } from 'next';
+import { SITE_URL, SITE_NAME } from '@/lib/site';
+import { TagView } from './TagView';
 
-import { usePosts } from '@/features/posts/hooks/usePosts';
-import { PostList } from '@/components/post/PostList';
+type Params = { slug: string };
 
-/**
- * 태그 중심 탐색 페이지. 게시판이 아니라 태그(#slug)로 전체 게시글을 가로질러 모아 본다.
- * 태그별 게시글은 기존 GET /posts?tag= 필터를 재사용한다.
- */
-export default function TagPage({ params }: { params: { slug: string } }) {
+export function generateMetadata({ params }: { params: Params }): Metadata {
   const tag = decodeURIComponent(params.slug);
-  const { data, isLoading, isError } = usePosts({ tag, limit: 20 });
+  const url = `${SITE_URL}/tag/${params.slug}`;
+  const description = `'${tag}' 태그가 달린 게시글 모음 — ${SITE_NAME}`;
+  return {
+    title: `#${tag} — ${SITE_NAME}`,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title: `#${tag}`, description, url, siteName: SITE_NAME },
+    twitter: { card: 'summary', title: `#${tag}`, description },
+  };
+}
 
-  return (
-    <>
-      <h1 className="font-display text-xl font-semibold text-text-primary">
-        <span className="text-text-muted">#</span>
-        {tag}
-      </h1>
-      <PostList items={data?.items} isLoading={isLoading} isError={isError} />
-    </>
-  );
+export default function Page({ params }: { params: Params }) {
+  return <TagView slug={params.slug} />;
 }

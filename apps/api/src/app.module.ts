@@ -35,6 +35,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ReportsModule } from './modules/reports/reports.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AdsModule } from './modules/ads/ads.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
@@ -86,6 +87,7 @@ import { AdsModule } from './modules/ads/ads.module';
     ReportsModule,
     AdminModule,
     AdsModule,
+    AiModule,
   ],
   providers: [
     // 실행 순서: IpBanGuard -> ThrottlerGuard -> JwtAuthGuard -> RolesGuard -> PermissionsGuard -> EmailVerifiedGuard

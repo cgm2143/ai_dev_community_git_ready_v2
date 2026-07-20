@@ -14,6 +14,21 @@ export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => 
   const { data: categories } = useCategories();
   const [openId, setOpenId] = React.useState<string | null>(null);
 
+  // 열려 있는 동안: ESC로 닫기 + 뒤 배경 스크롤 잠금(포커스가 뒤로 새지 않도록 최소한의 처리).
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, onClose]);
+
   // 상단 메뉴(primary) 먼저, 그다음 더보기(secondary)를 menuOrder 순으로 평탄화한다.
   const flat = [...(categories ?? [])].sort((a, b) => {
     if (a.isPrimaryMenu !== b.isPrimaryMenu) return a.isPrimaryMenu ? -1 : 1;
