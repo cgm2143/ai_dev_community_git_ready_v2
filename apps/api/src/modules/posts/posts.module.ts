@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PostsController } from './posts.controller';
 import { AdminPostsController } from './admin-posts.controller';
+import { TagsController } from './tags.controller';
 import { PostsService } from './posts.service';
 import { TagsService } from './services/tags.service';
 import { PostViewService } from './services/post-view.service';
@@ -14,7 +15,7 @@ import { RankingModule } from '../ranking/ranking.module';
 
 @Module({
   imports: [MarkdownModule, BlocksModule, AttachmentsModule, AdminWordFilterModule, RankingModule],
-  controllers: [PostsController, AdminPostsController],
+  controllers: [PostsController, AdminPostsController, TagsController],
   providers: [
     PostsService,
     TagsService,

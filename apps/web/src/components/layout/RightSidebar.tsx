@@ -1,4 +1,5 @@
 import { AdSlot } from '@/components/ads/AdSlot';
+import { PopularTags } from './PopularTags';
 
 export function RightSidebar() {
   return (
@@ -10,7 +11,7 @@ export function RightSidebar() {
 
       <section>
         <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">인기 태그</h4>
-        <p className="text-sm text-text-muted">검색어 기반 태그 조회 API(7단계)에 연결 예정입니다.</p>
+        <PopularTags />
       </section>
 
       <section>

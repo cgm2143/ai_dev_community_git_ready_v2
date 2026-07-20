@@ -45,4 +45,11 @@ export class AdminCategoriesController {
   async remove(@Param('id') id: string): Promise<void> {
     await this.categoriesService.remove(id);
   }
+
+  @Post('reset')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: '카테고리/게시판을 기본 시드(DEFAULT_CATEGORY_SEED)로 초기화 (시드 스크립트와 동일 데이터)' })
+  async reset(): Promise<void> {
+    await this.categoriesService.resetToDefault();
+  }
 }

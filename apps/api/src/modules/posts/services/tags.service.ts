@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../../infra/prisma/prisma.service';
 
 const MAX_TAGS_PER_POST = 5;
 const MAX_TAG_NAME_LENGTH = 30;
@@ -13,6 +14,18 @@ const MAX_TAG_NAME_LENGTH = 30;
  */
 @Injectable()
 export class TagsService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  /** 인기 태그 목록 (usageCount 내림차순). 태그 중심 탐색/사이드바 노출에 사용. */
+  async findPopular(limit = 30): Promise<Array<{ name: string; usageCount: number }>> {
+    return this.prisma.tag.findMany({
+      where: { usageCount: { gt: 0 } },
+      orderBy: { usageCount: 'desc' },
+      take: limit,
+      select: { name: true, usageCount: true },
+    });
+  }
+
   normalizeTagNames(rawTags: string[] | undefined): string[] {
     if (!rawTags) return [];
 

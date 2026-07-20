@@ -4,6 +4,7 @@ import { RedisService } from '../../infra/redis/redis.service';
 import { AppException } from '../../common/exceptions/app.exception';
 import { ErrorCode } from '../../common/constants/error-codes';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
+import { applyCategorySeed } from './category-seed';
 
 const PUBLIC_CATEGORIES_CACHE_KEY = 'categories:public';
 const PUBLIC_CATEGORIES_CACHE_TTL_SECONDS = 60;
@@ -31,7 +32,8 @@ export class CategoriesService {
     }
 
     const categories = await this.prisma.category.findMany({
-      orderBy: { sortOrder: 'asc' },
+      where: { isActive: true },
+      orderBy: { menuOrder: 'asc' },
       include: {
         boards: {
           where: { isActive: true },
@@ -48,7 +50,7 @@ export class CategoriesService {
   /** 관리자용 - 비활성 게시판을 포함한 전체 목록 (캐싱하지 않음 - 최신 상태 확인이 목적) */
   async findAllForAdmin() {
     return this.prisma.category.findMany({
-      orderBy: { sortOrder: 'asc' },
+      orderBy: { menuOrder: 'asc' },
       include: { boards: { orderBy: { sortOrder: 'asc' } } },
     });
   }
@@ -57,7 +59,15 @@ export class CategoriesService {
     await this.assertSlugAvailable(dto.slug);
 
     const created = await this.prisma.category.create({
-      data: { name: dto.name, slug: dto.slug, sortOrder: dto.sortOrder ?? 0 },
+      data: {
+        name: dto.name,
+        slug: dto.slug,
+        sortOrder: dto.sortOrder ?? 0,
+        icon: dto.icon,
+        menuOrder: dto.menuOrder ?? 0,
+        isPrimaryMenu: dto.isPrimaryMenu ?? false,
+        isActive: dto.isActive ?? true,
+      },
     });
 
     await this.invalidatePublicCache();
@@ -78,6 +88,10 @@ export class CategoriesService {
         ...(dto.name !== undefined ? { name: dto.name } : {}),
         ...(dto.slug !== undefined ? { slug: dto.slug } : {}),
         ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
+        ...(dto.icon !== undefined ? { icon: dto.icon } : {}),
+        ...(dto.menuOrder !== undefined ? { menuOrder: dto.menuOrder } : {}),
+        ...(dto.isPrimaryMenu !== undefined ? { isPrimaryMenu: dto.isPrimaryMenu } : {}),
+        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       },
     });
 
@@ -95,6 +109,15 @@ export class CategoriesService {
     }
 
     await this.prisma.category.delete({ where: { id } });
+    await this.invalidatePublicCache();
+  }
+
+  /**
+   * 관리자 초기화: 시드 스크립트(prisma/seed.ts)와 동일한 DEFAULT_CATEGORY_SEED로
+   * 카테고리/게시판을 재구성한다(멱등). PrismaService는 PrismaClient를 상속하므로 그대로 전달한다.
+   */
+  async resetToDefault(): Promise<void> {
+    await applyCategorySeed(this.prisma);
     await this.invalidatePublicCache();
   }
 

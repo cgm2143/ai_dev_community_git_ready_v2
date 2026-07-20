@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { applyCategorySeed } from '../src/modules/categories/category-seed';
 
 const prisma = new PrismaClient();
 
@@ -27,52 +28,8 @@ const ROLE_PERMISSIONS: Record<string, readonly string[]> = {
   USER: [],
 };
 
-const CATEGORIES: Array<{ name: string; slug: string; boards: string[] }> = [
-  {
-    name: 'AI',
-    slug: 'ai',
-    boards: [
-      'ChatGPT',
-      'Claude',
-      'Gemini',
-      'Cursor',
-      'Windsurf',
-      'Copilot',
-      'AI Coding',
-      'Prompt',
-      'MCP',
-      'AI News',
-    ],
-  },
-  {
-    name: '개발',
-    slug: 'dev',
-    boards: [
-      'JavaScript',
-      'TypeScript',
-      'Python',
-      'Java',
-      'Spring',
-      'React',
-      'Next.js',
-      'NestJS',
-      'Node.js',
-      'Docker',
-      'Kubernetes',
-      'AWS',
-    ],
-  },
-  {
-    name: '커뮤니티',
-    slug: 'community',
-    boards: ['자유게시판', '질문답변', '프로젝트 모집', '취업', '유머', '정보공유'],
-  },
-  {
-    name: '운영',
-    slug: 'ops',
-    boards: ['공지사항', '건의사항'],
-  },
-];
+// 카테고리/게시판 시드 데이터와 반영 로직은 src/modules/categories/category-seed.ts로 분리했다
+// (시드 스크립트와 관리자 "카테고리 초기화"가 동일 데이터를 공유하도록 하기 위함).
 
 const AD_SLOTS = [
   { code: 'HEADER_TOP', name: '헤더 상단 배너' },
@@ -90,14 +47,6 @@ const DEFAULT_SETTINGS: Array<{ key: string; value: unknown }> = [
   { key: 'theme_default', value: 'light' },
   { key: 'maintenance_mode', value: false },
 ];
-
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9가-힣]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
 
 async function seedRolesAndPermissions(): Promise<Map<string, string>> {
   const roleIdByName = new Map<string, string>();
@@ -138,30 +87,6 @@ async function seedRolesAndPermissions(): Promise<Map<string, string>> {
   }
 
   return roleIdByName;
-}
-
-async function seedCategoriesAndBoards(): Promise<void> {
-  for (const [index, category] of CATEGORIES.entries()) {
-    const createdCategory = await prisma.category.upsert({
-      where: { slug: category.slug },
-      update: { name: category.name, sortOrder: index },
-      create: { name: category.name, slug: category.slug, sortOrder: index },
-    });
-
-    for (const [boardIndex, boardName] of category.boards.entries()) {
-      const boardSlug = `${category.slug}-${slugify(boardName)}`;
-      await prisma.board.upsert({
-        where: { slug: boardSlug },
-        update: { name: boardName, sortOrder: boardIndex, categoryId: createdCategory.id },
-        create: {
-          name: boardName,
-          slug: boardSlug,
-          sortOrder: boardIndex,
-          categoryId: createdCategory.id,
-        },
-      });
-    }
-  }
 }
 
 async function seedAdSlots(): Promise<void> {
@@ -216,7 +141,7 @@ async function seedAdminUser(roleIdByName: Map<string, string>): Promise<void> {
 
 async function main(): Promise<void> {
   const roleIdByName = await seedRolesAndPermissions();
-  await seedCategoriesAndBoards();
+  await applyCategorySeed(prisma);
   await seedAdSlots();
   await seedSettings();
   await seedAdminUser(roleIdByName);
