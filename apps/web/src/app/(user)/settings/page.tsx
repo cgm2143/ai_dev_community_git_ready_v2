@@ -255,16 +255,22 @@ function BlockedUsersSection() {
   );
 }
 
+// 비밀번호가 없는 소셜 전용 계정은 비밀번호로 본인 확인을 할 수 없으므로(OAuth 로그인은
+// 우리 서버에 비밀번호를 저장하지 않는다), 대신 이 문구를 그대로 입력해야 탈퇴가 확정된다.
+const WITHDRAW_CONFIRM_WORD = '탈퇴';
+
 function WithdrawSection() {
   const { data: me } = useMe();
   const [password, setPassword] = React.useState('');
+  const [confirmText, setConfirmText] = React.useState('');
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const withdrawMutation = useWithdrawAccount();
 
   // me 로딩 전에는 안전하게 "비밀번호 계정"으로 간주해 입력칸을 보여준다(소셜 계정이면
-  // 곧 me가 로드되며 칸이 사라진다). 소셜 전용 계정(hasPassword=false)은 비밀번호 확인
-  // 없이 바로 탈퇴한다.
+  // 곧 me가 로드되며 칸이 사라진다). 소셜 전용 계정(hasPassword=false)은 비밀번호 대신
+  // 확인 문구 입력으로 본인 의사를 확인한다.
   const hasPassword = me?.hasPassword ?? true;
+  const canWithdraw = hasPassword ? Boolean(password) : confirmText.trim() === WITHDRAW_CONFIRM_WORD;
 
   return (
     <Card className="border-accent-danger/40">
@@ -292,9 +298,17 @@ function WithdrawSection() {
                 <p className="text-xs text-text-muted">본인 확인을 위해 계정 비밀번호를 입력해 주세요.</p>
               </>
             ) : (
-              <p className="text-xs text-text-muted">
-                소셜 로그인 전용 계정이라 비밀번호 확인 없이 바로 탈퇴됩니다.
-              </p>
+              <>
+                <Input
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder={`탈퇴하려면 "${WITHDRAW_CONFIRM_WORD}"를 입력해 주세요`}
+                />
+                <p className="text-xs text-text-muted">
+                  소셜 로그인 전용 계정은 비밀번호가 없어, 확인을 위해{' '}
+                  <span className="font-semibold text-text-secondary">{WITHDRAW_CONFIRM_WORD}</span>를 입력해 주세요.
+                </p>
+              </>
             )}
             {withdrawMutation.isError && (
               <p className="text-xs text-accent-danger">
@@ -309,7 +323,7 @@ function WithdrawSection() {
                 variant="danger"
                 size="sm"
                 onClick={() => withdrawMutation.mutate(hasPassword ? password || undefined : undefined)}
-                disabled={withdrawMutation.isPending || (hasPassword && !password)}
+                disabled={withdrawMutation.isPending || !canWithdraw}
               >
                 {withdrawMutation.isPending ? '처리 중...' : '탈퇴 확정'}
               </Button>
