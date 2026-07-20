@@ -14,10 +14,9 @@ export function useRegister() {
     mutationFn: (values: RegisterFormValues) =>
       register({ email: values.email, nickname: values.nickname, password: values.password }),
     onSuccess: (data) => {
+      // 이메일 인증 절차를 제거했으므로, 가입과 동시에 로그인되어 바로 홈으로 진입한다.
       setSession(data.accessToken, data.user);
-      // 가입 직후에는 이메일 미인증 상태이므로, 인증 안내 화면으로 보낸다
-      // (백엔드 EmailVerifiedGuard가 커뮤니티 활동 관련 API를 막고 있음을 안내).
-      router.push('/verify-email');
+      router.push('/');
       router.refresh();
     },
   });
