@@ -10,6 +10,7 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { QueryPostDto } from './dto/query-post.dto';
 import { BestPostsQueryDto } from './dto/best-posts-query.dto';
+import { RankingQueryDto } from './dto/ranking-query.dto';
 import { PostDetailDto, PostListItemDto } from './dto/post-response.dto';
 
 @ApiTags('posts')
@@ -39,6 +40,15 @@ export class PostsController {
   async findBest(@Query() query: BestPostsQueryDto, @CurrentUser() user?: AuthenticatedUser) {
     const ids = await this.rankingService.getTopPostIds(query.period ?? 'daily', query.limit ?? 20);
     return this.postsService.findManyByIds(ids, user?.id);
+  }
+
+  // '/posts/ranking'도 '/posts/:id'보다 먼저 등록해야 한다(Express 라우트 매칭 순서).
+  @OptionalAuth()
+  @Get('ranking')
+  @ApiOperation({ summary: '범용 랭킹 조회 (type=hot|views|comments|likes, period=daily|weekly|monthly)' })
+  @ApiResponse({ status: 200, type: [PostListItemDto] })
+  async findRanking(@Query() query: RankingQueryDto, @CurrentUser() user?: AuthenticatedUser) {
+    return this.postsService.findRanking(query.type ?? 'hot', query.period, query.limit ?? 10, user?.id);
   }
 
   @OptionalAuth()

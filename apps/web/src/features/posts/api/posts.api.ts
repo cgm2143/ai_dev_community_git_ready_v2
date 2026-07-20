@@ -40,10 +40,32 @@ export interface PaginatedResponse<T> {
 export interface QueryPostsParams {
   boardId?: string;
   tag?: string;
+  /** 여러 태그 OR (콤마 구분). Feature Hub용. */
+  tags?: string;
+  /** 카테고리 slug 필터 */
+  category?: string;
   keyword?: string;
   sort?: 'latest' | 'popular';
   page?: number;
   limit?: number;
+}
+
+export type RankingType = 'hot' | 'views' | 'comments' | 'likes';
+
+export interface RankingParams {
+  type?: RankingType;
+  period?: 'daily' | 'weekly' | 'monthly';
+  limit?: number;
+}
+
+/** 범용 랭킹 조회. type=hot|views|comments|likes. 결과는 게시글 목록 배열(페이지네이션 없음). */
+export function getRanking(params: RankingParams = {}) {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined) search.set(key, String(value));
+  });
+  const query = search.toString();
+  return api.get<PostListItem[]>(`/posts/ranking${query ? `?${query}` : ''}`);
 }
 
 export function getPosts(params: QueryPostsParams = {}) {

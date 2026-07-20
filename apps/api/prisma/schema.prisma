@@ -222,10 +222,18 @@ model Post {
   @@map("posts")
 }
 
+// 태그 종류. NORMAL은 일반 사용자/AI 자동태그가 붙이는 콘텐츠 태그,
+// FEATURE는 Labs/챌린지/리뷰/AMA 같은 콘텐츠 허브(Feature View)를 구성하는 데 쓰는 큐레이션 태그.
+enum TagType {
+  NORMAL
+  FEATURE
+}
+
 model Tag {
-  id         String @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
-  name       String @unique
-  usageCount Int    @default(0) @map("usage_count")
+  id         String  @id @default(dbgenerated("uuid_generate_v7()")) @db.Uuid
+  name       String  @unique
+  usageCount Int     @default(0) @map("usage_count")
+  type       TagType @default(NORMAL)
 
   postTags PostTag[]
 
