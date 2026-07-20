@@ -1,4 +1,5 @@
 import { PostCard } from './PostCard';
+import { EmptyState, type EmptyStateAction } from '@/components/common/EmptyState';
 import type { PostListItem } from '@/features/posts/api/posts.api';
 
 interface PostListProps {
@@ -7,7 +8,16 @@ interface PostListProps {
   isError: boolean;
   emptyMessage?: string;
   errorMessage?: string;
+  emptyActions?: EmptyStateAction[];
+  /** 목록의 카드에 HOT 배지를 강제 표시(예: HOT 섹션). */
+  hot?: boolean;
 }
+
+const DEFAULT_EMPTY_ACTIONS: EmptyStateAction[] = [
+  { label: '첫 글 작성하기', href: '/write' },
+  { label: '인기글 보기', href: '/hot' },
+  { label: '다른 게시판 둘러보기', href: '/' },
+];
 
 export function PostList({
   items,
@@ -15,6 +25,8 @@ export function PostList({
   isError,
   emptyMessage = '아직 게시글이 없습니다.',
   errorMessage = '게시글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.',
+  emptyActions = DEFAULT_EMPTY_ACTIONS,
+  hot,
 }: PostListProps) {
   if (isLoading) {
     return (
@@ -35,17 +47,13 @@ export function PostList({
   }
 
   if (!items || items.length === 0) {
-    return (
-      <p className="rounded-card border border-border-hairline bg-bg-surface p-6 text-center text-sm text-text-secondary">
-        {emptyMessage}
-      </p>
-    );
+    return <EmptyState message={emptyMessage} actions={emptyActions} />;
   }
 
   return (
     <div className="flex flex-col gap-3">
       {items.map((post) => (
-        <PostCard key={post.id} post={post} />
+        <PostCard key={post.id} post={post} hot={hot} />
       ))}
     </div>
   );

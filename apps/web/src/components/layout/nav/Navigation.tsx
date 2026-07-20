@@ -51,7 +51,13 @@ export function Navigation() {
   }, []);
 
   return (
-    <div className="relative" onMouseLeave={secondary.length > 0 ? closeSoon : undefined}>
+    <div
+      className="relative"
+      onMouseLeave={secondary.length > 0 ? closeSoon : undefined}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') setMoreOpen(false);
+      }}
+    >
       <nav className="flex items-center gap-0.5">
         <Link href="/hot" className={itemClass(pathname === '/hot')}>
           <span aria-hidden>🔥</span>

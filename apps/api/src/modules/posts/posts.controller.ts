@@ -5,21 +5,16 @@ import { RequireEmailVerified } from '../../common/decorators/require-email-veri
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/types/jwt-payload.interface';
 import { PostsService } from './posts.service';
-import { RankingService } from '../ranking/ranking.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { QueryPostDto } from './dto/query-post.dto';
-import { BestPostsQueryDto } from './dto/best-posts-query.dto';
 import { RankingQueryDto } from './dto/ranking-query.dto';
 import { PostDetailDto, PostListItemDto } from './dto/post-response.dto';
 
 @ApiTags('posts')
 @Controller('posts')
 export class PostsController {
-  constructor(
-    private readonly postsService: PostsService,
-    private readonly rankingService: RankingService,
-  ) {}
+  constructor(private readonly postsService: PostsService) {}
 
   @OptionalAuth()
   @Get()
@@ -29,20 +24,8 @@ export class PostsController {
     return this.postsService.findAll(query, user?.id);
   }
 
-  // '/posts/best'는 반드시 '/posts/:id'보다 먼저 등록되어야 한다 - 그렇지 않으면
-  // 'best'라는 문자열이 :id 파라미터로 잘못 매칭된다 (Express는 라우트를 등록 순서대로 매칭).
-  @OptionalAuth()
-  @Get('best')
-  @ApiOperation({
-    summary: '인기글 조회 (시간 가중치 랭킹 - 오늘/주간/월간, 12단계 Performance에서 구현)',
-  })
-  @ApiResponse({ status: 200, type: [PostListItemDto] })
-  async findBest(@Query() query: BestPostsQueryDto, @CurrentUser() user?: AuthenticatedUser) {
-    const ids = await this.rankingService.getTopPostIds(query.period ?? 'daily', query.limit ?? 20);
-    return this.postsService.findManyByIds(ids, user?.id);
-  }
-
-  // '/posts/ranking'도 '/posts/:id'보다 먼저 등록해야 한다(Express 라우트 매칭 순서).
+  // '/posts/ranking'은 반드시 '/posts/:id'보다 먼저 등록해야 한다(Express 라우트 매칭 순서).
+  // (기존 '/posts/best'는 이 범용 랭킹 엔드포인트 type=hot으로 통합되었다.)
   @OptionalAuth()
   @Get('ranking')
   @ApiOperation({ summary: '범용 랭킹 조회 (type=hot|views|comments|likes, period=daily|weekly|monthly)' })

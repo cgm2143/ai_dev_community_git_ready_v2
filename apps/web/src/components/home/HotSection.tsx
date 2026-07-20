@@ -9,7 +9,7 @@ export function HotSection() {
   const { data, isLoading, isError } = useRankingPosts({ type: 'hot', period: 'daily', limit: 5 });
   return (
     <HomeSection title="HOT" icon="🔥" moreHref="/hot">
-      <PostList items={data} isLoading={isLoading} isError={isError} emptyMessage="아직 인기글이 없습니다." />
+      <PostList items={data} isLoading={isLoading} isError={isError} emptyMessage="아직 인기글이 없습니다." hot />
     </HomeSection>
   );
 }
