@@ -146,6 +146,16 @@ model Category {
   slug      String @unique
   sortOrder Int    @default(0) @map("sort_order")
 
+  // 상단 네비게이션(GNB) 구성용 필드.
+  // - icon: 메뉴 앞에 붙는 이모지(예: 🤖). 하드코딩 대신 DB에서 관리한다.
+  // - menuOrder: 네비게이션 내 정렬 순서(작을수록 앞).
+  // - isPrimaryMenu: true면 상단 GNB에, false면 "더보기(Mega Menu)"에 노출한다.
+  icon          String?
+  menuOrder     Int     @default(0) @map("menu_order")
+  isPrimaryMenu Boolean @default(false) @map("is_primary_menu")
+  // 공개 여부. false면 GNB/더보기 등 공개 네비게이션에서 숨긴다(관리자에게만 보임).
+  isActive      Boolean @default(true) @map("is_active")
+
   boards Board[]
 
   @@map("categories")

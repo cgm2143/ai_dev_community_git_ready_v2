@@ -15,6 +15,12 @@ export interface CategoryWithBoards {
   name: string;
   slug: string;
   sortOrder: number;
+  /** 메뉴 앞 이모지 */
+  icon: string | null;
+  /** 네비게이션 정렬 순서 */
+  menuOrder: number;
+  /** true면 상단 GNB, false면 더보기(Mega Menu) */
+  isPrimaryMenu: boolean;
   boards: BoardSummary[];
 }
 

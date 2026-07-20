@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: '/admin', label: '대시보드' },
   { href: '/admin/users', label: '회원 관리' },
   { href: '/admin/reports', label: '신고 처리' },
+  { href: '/admin/categories', label: '카테고리 관리' },
   { href: '/admin/ads', label: '광고 관리' },
   { href: '/admin/words', label: '금칙어 관리' },
   { href: '/admin/ip-bans', label: 'IP 차단' },

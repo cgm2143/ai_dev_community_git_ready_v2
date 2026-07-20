@@ -200,3 +200,43 @@ export function getAdminLogs(params: { action?: string; page?: number; limit?: n
   Object.entries(params).forEach(([key, value]) => value !== undefined && search.set(key, String(value)));
   return api.get<PaginatedResponse<AdminLog>>(`/admin/logs?${search.toString()}`);
 }
+
+// ── 카테고리 (상단 네비게이션 관리) ──────────────────────
+export interface AdminCategoryBoard {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface AdminCategory {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  menuOrder: number;
+  isPrimaryMenu: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  boards: AdminCategoryBoard[];
+}
+
+export interface UpdateCategoryPayload {
+  name?: string;
+  icon?: string;
+  menuOrder?: number;
+  isPrimaryMenu?: boolean;
+  isActive?: boolean;
+}
+
+export function getAdminCategories() {
+  return api.get<AdminCategory[]>('/admin/categories');
+}
+
+export function updateCategory(id: string, payload: UpdateCategoryPayload) {
+  return api.patch<AdminCategory>(`/admin/categories/${id}`, payload);
+}
+
+/** 카테고리/게시판을 기본 시드(DEFAULT_CATEGORY_SEED)로 초기화 */
+export function resetCategories() {
+  return api.post<void>('/admin/categories/reset');
+}

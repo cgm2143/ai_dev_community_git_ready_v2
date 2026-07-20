@@ -137,3 +137,32 @@ export function useUpdateSiteSetting() {
 export function useAdminLogs(params: { action?: string; page?: number } = {}) {
   return useQuery({ queryKey: ['admin-logs', params], queryFn: () => adminApi.getAdminLogs(params) });
 }
+
+// ── 카테고리 (상단 네비게이션 관리) ──────────────────────
+export function useAdminCategories() {
+  return useQuery({ queryKey: ['admin-categories'], queryFn: adminApi.getAdminCategories });
+}
+
+export function useUpdateCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: adminApi.UpdateCategoryPayload }) =>
+      adminApi.updateCategory(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
+      // 상단 GNB가 쓰는 공개 카테고리 캐시도 무효화해 즉시 반영되게 한다.
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+  });
+}
+
+export function useResetCategories() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => adminApi.resetCategories(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+  });
+}

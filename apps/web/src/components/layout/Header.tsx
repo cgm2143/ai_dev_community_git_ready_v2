@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Bell, Search } from 'lucide-react';
+import { Bell, Menu, Search } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useNotifications } from '@/features/notifications/hooks/useNotifications';
 import { useLogout } from '@/features/auth/hooks/useLogout';
@@ -12,12 +12,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
+import { Navigation } from './nav/Navigation';
+import { MobileDrawer } from './nav/MobileDrawer';
 
 export function Header() {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
   const logoutMutation = useLogout();
   const [query, setQuery] = React.useState('');
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
   const { data: notifications } = useNotifications(false, Boolean(user));
   const unreadCount = user ? (notifications?.meta?.unreadCount ?? 0) : 0;
 
@@ -32,7 +35,16 @@ export function Header() {
       {/* 본문(홈 피드 등)이 max-w-[1280px]로 가운데 정렬되는 것과 맞춰, 헤더 내용도
           같은 폭 안에서 가운데로 모이도록 감싼다 - 그렇지 않으면 화면이 넓을 때
           로고/버튼이 브라우저 양쪽 끝에 붙어 본문과 정렬이 안 맞아 보인다. */}
-      <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center justify-center gap-4 px-4">
+      <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center gap-3 px-4">
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="메뉴 열기"
+          className="-ml-1 rounded-md p-1.5 text-text-secondary hover:bg-bg-surface-muted md:hidden"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+
         <Logo />
 
         <form onSubmit={handleSearchSubmit} className="relative hidden max-w-md flex-1 md:block">
@@ -95,6 +107,15 @@ export function Header() {
           )}
         </div>
       </div>
+
+      {/* 상단 GNB (데스크톱/태블릿). 모바일에서는 햄버거 버튼 → MobileDrawer를 사용한다. */}
+      <div className="hidden border-t border-border-hairline md:block">
+        <div className="mx-auto w-full max-w-[1280px] px-2">
+          <Navigation />
+        </div>
+      </div>
+
+      <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </header>
   );
 }
