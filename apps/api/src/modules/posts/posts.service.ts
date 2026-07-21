@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma, PostStatus } from '@prisma/client';
 import sanitizeHtml from 'sanitize-html';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { RedisService } from '../../infra/redis/redis.service';
+import { PostsConfig } from '../../config/configuration';
 import { MarkdownService } from '../../infra/markdown/markdown.service';
 import { BlockService } from '../blocks/block.service';
 import { AttachmentsService } from '../attachments/attachments.service';
@@ -62,6 +65,45 @@ const DETAIL_SELECT = {
 type PostListRow = Prisma.PostGetPayload<{ select: typeof LIST_SELECT }>;
 type PostDetailRow = Prisma.PostGetPayload<{ select: typeof DETAIL_SELECT }>;
 
+/**
+ * 연관 게시글 추천 점수 가중치. 하드코딩하지 않고 한 곳에서 관리한다.
+ * 향후 Embedding 유사도 점수를 더할 때도 이 구성에 상수 하나(RELATED_EMBEDDING_WEIGHT)만 추가하면 된다.
+ */
+const RELATED_TAG_WEIGHT = 10; // 공유 태그 1개당 가산
+const RELATED_CATEGORY_WEIGHT = 5; // 같은 카테고리일 때 가산
+const RELATED_TITLE_WEIGHT = 8; // 제목 키워드 Jaccard 유사도(0~1)에 곱함
+const RELATED_VIEW_WEIGHT = 1; // log10(1+조회수)에 곱함
+const RELATED_RECENCY_WEIGHT = 3; // 최신 감쇠(0~1)에 곱함
+const RELATED_LIMIT = 5; // 최종 추천 개수
+
+/**
+ * 후보를 60개만 조회하는 이유:
+ * - 점수 계산을 애플리케이션 메모리에서 하므로 후보 수가 비용에 직결된다. 최신순 60개면
+ *   "같은 태그 OR 같은 카테고리" 후보 중 최근 글을 충분히 포괄하면서도 계산 비용을 상수로 묶어 둘 수 있다.
+ * - 지금은 데이터 규모가 작아 이 방식(후보 조회 + 인메모리 스코어링)이 단순하고 충분하다.
+ * - 데이터가 커지면: (a) 스코어링을 SQL(ts_rank/집계)로 내리거나, (b) Embedding 유사도 검색(pgvector)으로
+ *   후보 생성을 교체할 수 있다. 그때 이 상수와 candidate 쿼리만 바꾸면 되도록 로직을 분리해 두었다.
+ */
+const RELATED_CANDIDATE_POOL = 60;
+
+/** 연관 게시글 후보 select. 목록 select에 카테고리(점수/응답용)를 더한다. */
+const RELATED_SELECT = {
+  ...LIST_SELECT,
+  board: { select: { name: true, slug: true, categoryId: true, category: { select: { name: true, slug: true } } } },
+} satisfies Prisma.PostSelect;
+
+type RelatedRow = Prisma.PostGetPayload<{ select: typeof RELATED_SELECT }>;
+
+/** 제목을 키워드 토큰 집합으로 변환한다(소문자화, 2자 이상, 영문/숫자/한글). */
+function tokenizeTitle(title: string): Set<string> {
+  return new Set(
+    title
+      .toLowerCase()
+      .split(/[^0-9a-z가-힣]+/)
+      .filter((token) => token.length >= 2),
+  );
+}
+
 @Injectable()
 export class PostsService {
   constructor(
@@ -76,6 +118,8 @@ export class PostsService {
     private readonly wordFilterService: WordFilterService,
     private readonly rankingService: RankingService,
     private readonly aiAnalysisService: AiAnalysisService,
+    private readonly redisService: RedisService,
+    private readonly configService: ConfigService,
   ) {}
 
   async findAll(query: QueryPostDto, viewerId?: string) {
@@ -450,6 +494,119 @@ export class PostsService {
   private buildExcerpt(contentHtml: string): string {
     const text = sanitizeHtml(contentHtml, { allowedTags: [], allowedAttributes: {} }).replace(/\s+/g, ' ').trim();
     return text.length > EXCERPT_LENGTH ? `${text.slice(0, EXCERPT_LENGTH)}…` : text;
+  }
+
+  /**
+   * 연관 게시글 추천. Embedding 없이 태그/카테고리/제목 유사도/조회수/최신성으로 점수를 매긴다.
+   * 결과는 Redis(related:post:{postId})에 TTL(Config) 동안 캐싱한다.
+   * 규칙: 자기 자신·삭제·비공개 제외, 점수 높은 순 최대 5개.
+   */
+  async findRelated(postId: string) {
+    const cacheKey = `related:post:${postId}`;
+    const cached = await this.redisService.getJson<ReturnType<PostsService['toRelatedItem']>[]>(cacheKey);
+    if (cached) return cached;
+
+    const source = await this.prisma.post.findFirst({
+      where: { id: postId, status: PostStatus.PUBLISHED, deletedAt: null },
+      select: {
+        title: true,
+        board: { select: { categoryId: true } },
+        postTags: { select: { tagId: true, tag: { select: { name: true } } } },
+      },
+    });
+    if (!source) return [];
+
+    const sourceTagIds = source.postTags.map((postTag) => postTag.tagId);
+    const sourceTagNames = new Set(source.postTags.map((postTag) => postTag.tag.name));
+    const sourceCategoryId = source.board.categoryId;
+    const sourceTitleTokens = tokenizeTitle(source.title);
+
+    // 후보 생성: 공개/미삭제/자기 제외 + (태그 1개 이상 공유 OR 같은 카테고리), 최신순 RELATED_CANDIDATE_POOL개.
+    const candidates = await this.prisma.post.findMany({
+      where: {
+        status: PostStatus.PUBLISHED,
+        deletedAt: null,
+        id: { not: postId },
+        OR: [
+          ...(sourceTagIds.length > 0
+            ? [{ postTags: { some: { tagId: { in: sourceTagIds } } } } as Prisma.PostWhereInput]
+            : []),
+          { board: { categoryId: sourceCategoryId } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: RELATED_CANDIDATE_POOL,
+      select: RELATED_SELECT,
+    });
+
+    const now = Date.now();
+    const result = candidates
+      .map((post) => ({ post, score: this.calculateRelatedScore(post, { sourceTagNames, sourceCategoryId, sourceTitleTokens }, now) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, RELATED_LIMIT)
+      .map(({ post, score }) => this.toRelatedItem(post, score));
+
+    await this.redisService.setJson(cacheKey, result, this.configService.get<PostsConfig>('posts')?.relatedCacheTtlSec);
+    return result;
+  }
+
+  /**
+   * 연관 게시글 점수 계산. 각 항목은 상수 가중치로 관리한다.
+   * 향후 Embedding 유사도를 더할 때 이 메서드 안에 한 줄만 추가하면 되도록 확장 포인트를 남겨 둔다.
+   */
+  private calculateRelatedScore(
+    post: RelatedRow,
+    ctx: { sourceTagNames: Set<string>; sourceCategoryId: string; sourceTitleTokens: Set<string> },
+    now: number,
+  ): number {
+    let score = 0;
+
+    // 1. 같은 태그(공유 개수 × 가중치)
+    let sharedTags = 0;
+    for (const postTag of post.postTags) {
+      if (ctx.sourceTagNames.has(postTag.tag.name)) sharedTags += 1;
+    }
+    score += sharedTags * RELATED_TAG_WEIGHT;
+
+    // 2. 같은 카테고리
+    if (post.board.categoryId === ctx.sourceCategoryId) score += RELATED_CATEGORY_WEIGHT;
+
+    // 3. 제목 키워드 유사도(Jaccard, 0~1)
+    score += this.titleSimilarity(ctx.sourceTitleTokens, post.title) * RELATED_TITLE_WEIGHT;
+
+    // 4. 조회수 가중치(로그 스케일)
+    score += Math.log10(1 + post.viewCount) * RELATED_VIEW_WEIGHT;
+
+    // 5. 최신 가중치(30일 기준 감쇠, 0~1)
+    const ageDays = (now - post.createdAt.getTime()) / 86_400_000;
+    score += (1 / (1 + ageDays / 30)) * RELATED_RECENCY_WEIGHT;
+
+    // Future: embedding similarity
+    // const embScore = await this.embeddingProvider.similarity(sourceVector, postVector);
+    // score += embScore * RELATED_EMBEDDING_WEIGHT;
+
+    return score;
+  }
+
+  /** 제목 토큰 집합 간 Jaccard 유사도(교집합/합집합). */
+  private titleSimilarity(sourceTokens: Set<string>, candidateTitle: string): number {
+    const candidateTokens = tokenizeTitle(candidateTitle);
+    if (sourceTokens.size === 0 || candidateTokens.size === 0) return 0;
+    let intersection = 0;
+    for (const token of candidateTokens) {
+      if (sourceTokens.has(token)) intersection += 1;
+    }
+    const union = sourceTokens.size + candidateTokens.size - intersection;
+    return union === 0 ? 0 : intersection / union;
+  }
+
+  /** 연관 게시글 응답 항목. 기존 toListItem을 재사용하고 category/score만 덧붙인다(프론트에서 PostCard 재사용). */
+  private toRelatedItem(post: RelatedRow, score: number) {
+    return {
+      ...this.toListItem(post),
+      category: post.board.category ? { name: post.board.category.name, slug: post.board.category.slug } : null,
+      score: Math.round(score * 100) / 100,
+    };
   }
 
   private toListItem(post: PostListRow) {

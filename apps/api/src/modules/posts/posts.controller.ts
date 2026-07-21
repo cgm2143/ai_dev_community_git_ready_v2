@@ -42,6 +42,14 @@ export class PostsController {
     return this.postsService.findOne(id, user?.id);
   }
 
+  @OptionalAuth()
+  @Get(':id/related')
+  @ApiOperation({ summary: '연관 게시글 (태그/카테고리/제목 유사도/조회수/최신성 점수 상위 5개, Redis 캐싱)' })
+  @ApiResponse({ status: 200, type: [PostListItemDto] })
+  async findRelated(@Param('id') id: string) {
+    return this.postsService.findRelated(id);
+  }
+
   @RequireEmailVerified()
   @Post()
   @ApiOperation({ summary: '게시글 작성 (Markdown, 태그, 첨부파일 연결)' })
