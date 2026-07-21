@@ -57,6 +57,11 @@ export interface NotificationConfig {
   broadcastBatchSize: number;
 }
 
+export interface PostsConfig {
+  // 연관 게시글 추천 결과 Redis 캐시 TTL(초).
+  relatedCacheTtlSec: number;
+}
+
 /**
  * AI 기능(요약/태그 추천 등) 설정. Temperature/MaxTokens/Timeout/Retry를 코드에 하드코딩하지 않고
  * 모두 환경변수로 관리한다. apiKey가 비어 있으면 AiModule이 자동으로 StubProvider로 폴백한다.
@@ -172,6 +177,9 @@ export default () => {
     notification: {
       broadcastBatchSize: parseInt(process.env.NOTIFICATION_BROADCAST_BATCH_SIZE ?? '500', 10),
     } satisfies NotificationConfig,
+    posts: {
+      relatedCacheTtlSec: parseInt(process.env.RELATED_POSTS_CACHE_TTL ?? '600', 10),
+    } satisfies PostsConfig,
     socialAuth: {
       naver: { clientId: process.env.NAVER_CLIENT_ID, clientSecret: process.env.NAVER_CLIENT_SECRET },
       kakao: { clientId: process.env.KAKAO_CLIENT_ID, clientSecret: process.env.KAKAO_CLIENT_SECRET },

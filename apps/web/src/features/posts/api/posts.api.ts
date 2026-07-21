@@ -68,6 +68,16 @@ export function getRanking(params: RankingParams = {}) {
   return api.get<PostListItem[]>(`/posts/ranking${query ? `?${query}` : ''}`);
 }
 
+/** 연관 게시글. 기존 PostListItem에 category/score를 더한 형태(프론트에서 PostCard 재사용). */
+export interface RelatedPost extends PostListItem {
+  category: { name: string; slug: string } | null;
+  score: number;
+}
+
+export function getRelatedPosts(postId: string) {
+  return api.get<RelatedPost[]>(`/posts/${postId}/related`);
+}
+
 export function getPosts(params: QueryPostsParams = {}) {
   const search = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
