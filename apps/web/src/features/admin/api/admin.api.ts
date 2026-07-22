@@ -222,6 +222,7 @@ export interface AdminCategory {
 
 export interface UpdateCategoryPayload {
   name?: string;
+  slug?: string;
   icon?: string;
   menuOrder?: number;
   isPrimaryMenu?: boolean;
