@@ -7,6 +7,9 @@ import { useCategories } from '@/features/boards/hooks/useCategories';
 import { MoreMenu } from './MoreMenu';
 import { MegaMenu } from './MegaMenu';
 
+// 상단 GNB에 노출할 1차 카테고리 최대 개수(HOT 제외). 초과분은 "더보기(Mega Menu)"로 이동한다.
+const MAX_PRIMARY_CATEGORIES = 5;
+
 function itemClass(active: boolean): string {
   return `flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors ${
     active
@@ -18,9 +21,8 @@ function itemClass(active: boolean): string {
 /**
  * 데스크톱/태블릿 상단 GNB.
  * - 🔥 HOT: 인기글 피드(/hot)로 가는 고정 항목(카테고리가 아니라 특수 피드).
- * - isPrimaryMenu=true 카테고리: 상단에 그대로 노출.
- * - isPrimaryMenu=false 카테고리: "더보기(Mega Menu)"로 그룹화.
- * 상단/더보기 배치는 전적으로 DB(menuOrder, isPrimaryMenu)로 결정된다.
+ * - 카테고리는 isPrimaryMenu 우선 → menuOrder 순으로 정렬한 뒤, 상위 MAX_PRIMARY_CATEGORIES개만 상단에 노출.
+ * - 그 이후(6번째~) 카테고리는 "더보기(Mega Menu)"로 그룹화.
  *
  * "더보기"의 열림 상태와 Mega Menu 패널은 이 컴포넌트가 소유한다. 패널을 트리거 버튼이 아니라
  * 네비게이션 컨테이너 왼쪽 기준으로 배치해야 화면 밖으로 잘리지 않기 때문이다. 패널이 컨테이너의
@@ -30,9 +32,14 @@ export function Navigation() {
   const { data: categories } = useCategories();
   const pathname = usePathname();
 
-  const list = categories ?? [];
-  const primary = list.filter((category) => category.isPrimaryMenu);
-  const secondary = list.filter((category) => !category.isPrimaryMenu);
+  // isPrimaryMenu 우선 → menuOrder 순으로 정렬한 뒤, 상위 5개를 상단에, 나머지를 더보기에 배치한다
+  // (모바일 드로어와 동일한 정렬 규칙).
+  const sorted = [...(categories ?? [])].sort((a, b) => {
+    if (a.isPrimaryMenu !== b.isPrimaryMenu) return a.isPrimaryMenu ? -1 : 1;
+    return a.menuOrder - b.menuOrder;
+  });
+  const primary = sorted.slice(0, MAX_PRIMARY_CATEGORIES);
+  const secondary = sorted.slice(MAX_PRIMARY_CATEGORIES);
 
   const [moreOpen, setMoreOpen] = React.useState(false);
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
