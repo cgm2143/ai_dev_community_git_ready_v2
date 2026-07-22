@@ -166,3 +166,40 @@ export function useResetCategories() {
     },
   });
 }
+
+// ── 게시판 (Board 관리) ──────────────────────────────
+// 게시판 변경은 공개 카테고리(GNB/더보기)에 노출되는 boards 목록에도 영향을 주므로,
+// 성공 시 admin-boards와 함께 공개 categories 캐시도 무효화해 즉시 반영되게 한다.
+function invalidateBoards(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ['admin-boards'] });
+  queryClient.invalidateQueries({ queryKey: ['categories'] });
+}
+
+export function useAdminBoards() {
+  return useQuery({ queryKey: ['admin-boards'], queryFn: adminApi.getAdminBoards });
+}
+
+export function useCreateBoard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: adminApi.CreateBoardPayload) => adminApi.createBoard(payload),
+    onSuccess: () => invalidateBoards(queryClient),
+  });
+}
+
+export function useUpdateBoard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: adminApi.UpdateBoardPayload }) =>
+      adminApi.updateBoard(id, payload),
+    onSuccess: () => invalidateBoards(queryClient),
+  });
+}
+
+export function useDeleteBoard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminApi.deleteBoard(id),
+    onSuccess: () => invalidateBoards(queryClient),
+  });
+}

@@ -241,3 +241,48 @@ export function updateCategory(id: string, payload: UpdateCategoryPayload) {
 export function resetCategories() {
   return api.post<void>('/admin/categories/reset');
 }
+
+// ── 게시판 (Board 관리) ──────────────────────────────
+export interface AdminBoard {
+  id: string;
+  categoryId: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface CreateBoardPayload {
+  categoryId: string;
+  name: string;
+  slug: string;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export interface UpdateBoardPayload {
+  categoryId?: string;
+  name?: string;
+  slug?: string;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export function getAdminBoards() {
+  return api.get<AdminBoard[]>('/admin/boards');
+}
+
+export function createBoard(payload: CreateBoardPayload) {
+  return api.post<AdminBoard>('/admin/boards', payload);
+}
+
+export function updateBoard(id: string, payload: UpdateBoardPayload) {
+  return api.patch<AdminBoard>(`/admin/boards/${id}`, payload);
+}
+
+export function deleteBoard(id: string) {
+  return api.delete<void>(`/admin/boards/${id}`);
+}
