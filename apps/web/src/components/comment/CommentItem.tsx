@@ -1,13 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { ThumbsUp, MessageSquare, Trash2 } from 'lucide-react';
+import { ThumbsUp, MessageSquare, Trash2, Flag } from 'lucide-react';
 import type { Comment } from '@/features/comments/api/comments.api';
 import { useReplies } from '@/features/comments/hooks/useReplies';
 import { useCreateComment, useDeleteComment } from '@/features/comments/hooks/useCommentMutations';
 import { useReactToComment } from '@/features/reactions/hooks/useReactions';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
+import { ReportModal } from '@/components/report/ReportModal';
 import { CommentForm } from './CommentForm';
 
 function formatRelativeTime(iso: string): string {
@@ -22,6 +23,7 @@ function formatRelativeTime(iso: string): string {
 export function CommentItem({ postId, comment }: { postId: string; comment: Comment }) {
   const [showReplies, setShowReplies] = React.useState(false);
   const [isReplying, setIsReplying] = React.useState(false);
+  const [reportOpen, setReportOpen] = React.useState(false);
   const currentUser = useAuthStore((state) => state.user);
 
   const repliesQuery = useReplies(comment.id, showReplies);
@@ -30,6 +32,8 @@ export function CommentItem({ postId, comment }: { postId: string; comment: Comm
   const deleteMutation = useDeleteComment(postId);
 
   const isOwner = currentUser?.id === comment.authorId;
+  // 로그인한 사용자 중 작성자 본인이 아니고, 삭제되지 않은 댓글에만 신고 버튼을 노출한다.
+  const canReport = Boolean(currentUser) && !isOwner && !comment.isDeleted;
 
   return (
     <div className="flex flex-col gap-2 py-3">
@@ -81,7 +85,21 @@ export function CommentItem({ postId, comment }: { postId: string; comment: Comm
               {showReplies ? '답글 숨기기' : `답글 ${comment.replyCount}개 보기`}
             </button>
           )}
+          {canReport && (
+            <button
+              type="button"
+              onClick={() => setReportOpen(true)}
+              className="flex items-center gap-1 hover:text-accent-danger"
+              aria-label="댓글 신고"
+            >
+              <Flag className="h-3.5 w-3.5" /> 신고
+            </button>
+          )}
         </div>
+      )}
+
+      {canReport && (
+        <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} targetType="COMMENT" targetId={comment.id} />
       )}
 
       {isReplying && (

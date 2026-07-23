@@ -1,14 +1,16 @@
 'use client';
 
+import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ThumbsUp, ThumbsDown, Bookmark, Pencil, Trash2, Eye } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Bookmark, Pencil, Trash2, Eye, Flag } from 'lucide-react';
 import type { PostDetail as PostDetailType } from '@/features/posts/api/posts.api';
 import { useReactToPost } from '@/features/reactions/hooks/useReactions';
 import { useBookmark } from '@/features/bookmarks/hooks/useBookmark';
 import { useDeletePost } from '@/features/posts/hooks/usePostMutations';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
+import { ReportModal } from '@/components/report/ReportModal';
 import { cn } from '@/lib/utils';
 
 export function PostDetail({ post }: { post: PostDetailType }) {
@@ -17,8 +19,11 @@ export function PostDetail({ post }: { post: PostDetailType }) {
   const reactMutation = useReactToPost(post.id);
   const bookmark = useBookmark(post.id);
   const deleteMutation = useDeletePost(post.id, post.boardSlug);
+  const [reportOpen, setReportOpen] = React.useState(false);
 
   const isOwner = currentUser?.id === post.authorId;
+  // 로그인한 사용자 중 작성자 본인이 아닐 때만 신고 버튼을 노출한다.
+  const canReport = Boolean(currentUser) && !isOwner;
 
   const handleDelete = () => {
     if (window.confirm('게시글을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
@@ -125,7 +130,16 @@ export function PostDetail({ post }: { post: PostDetailType }) {
         >
           <Bookmark className="h-4 w-4" /> 북마크
         </Button>
+        {canReport && (
+          <Button variant="ghost" onClick={() => setReportOpen(true)} aria-label="게시글 신고">
+            <Flag className="h-4 w-4" /> 신고
+          </Button>
+        )}
       </div>
+
+      {canReport && (
+        <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} targetType="POST" targetId={post.id} />
+      )}
     </article>
   );
 }
