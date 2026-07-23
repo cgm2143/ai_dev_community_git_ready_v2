@@ -65,16 +65,13 @@ export class EmailVerificationService {
     const appConfig = this.configService.get<AppConfig>('app');
     const verifyUrl = `${appConfig?.frontendUrl}/verify-email?token=${token}`;
 
-    try {
-      await this.mailQueueService.enqueue({
-        to: user.email,
-        subject: '[devhub] 이메일 인증을 완료해 주세요',
-        html: this.buildVerificationEmailHtml(user.nickname, verifyUrl),
-      });
-    } catch (error) {
-      // 큐 적재 자체가 실패하는 경우(Redis 장애 등)는 Worker의 재시도 대상도 아니므로 여기서 로그만 남긴다.
-      this.logger.error({ err: error, userId: user.id }, '인증 메일을 큐에 적재하지 못했습니다.');
-    }
+    // 정책: best-effort. 인증 메일은 재발송 가능한 부가 작업이므로, 큐 적재가 실패해도(중앙에서
+    // 로그 처리) 요청 자체는 정상 처리한다(반환값 무시). 큐 장애로 재발송이 500나지 않게 한다.
+    await this.mailQueueService.enqueue({
+      to: user.email,
+      subject: '[devhub] 이메일 인증을 완료해 주세요',
+      html: this.buildVerificationEmailHtml(user.nickname, verifyUrl),
+    });
   }
 
   async verifyEmail(token: string): Promise<void> {

@@ -46,15 +46,13 @@ export class PasswordResetService {
     const appConfig = this.configService.get<AppConfig>('app');
     const resetUrl = `${appConfig?.frontendUrl}/reset-password?token=${token}`;
 
-    try {
-      await this.mailQueueService.enqueue({
-        to: user.email,
-        subject: '[devhub] 비밀번호 재설정 안내',
-        html: this.buildResetEmailHtml(user.nickname, resetUrl),
-      });
-    } catch (error) {
-      this.logger.error({ err: error, userId: user.id }, '비밀번호 재설정 메일을 큐에 적재하지 못했습니다.');
-    }
+    // 정책: best-effort. 이 엔드포인트는 계정 존재 여부를 노출하지 않기 위해 항상 성공 응답으로
+    // 이어져야 하므로, 큐 적재 실패(중앙에서 로그 처리)로 요청을 실패시키지 않는다(반환값 무시).
+    await this.mailQueueService.enqueue({
+      to: user.email,
+      subject: '[devhub] 비밀번호 재설정 안내',
+      html: this.buildResetEmailHtml(user.nickname, resetUrl),
+    });
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
