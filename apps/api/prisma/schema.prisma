@@ -219,6 +219,12 @@ model Post {
   @@index([status, createdAt])
   @@index([authorId])
   @@index([deletedAt])
+  // 랭킹 정렬(count 컬럼 내림차순) 지원. status=PUBLISHED 필터 후 각 count 순 정렬을 인덱스로 처리해
+  // Seq Scan + 전체 Sort를 방지한다. (findRanking views/comments/likes, findAll sort=popular)
+  // HOT 랭킹은 Redis ZSET 정렬이라 이 인덱스와 무관하다.
+  @@index([status, likeCount])
+  @@index([status, viewCount])
+  @@index([status, commentCount])
   @@map("posts")
 }
 
