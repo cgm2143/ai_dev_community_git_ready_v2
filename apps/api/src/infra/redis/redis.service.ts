@@ -34,18 +34,35 @@ export class RedisService implements OnModuleDestroy {
     return this.redisClient;
   }
 
+  /**
+   * Redis는 캐시/부가 기능 계층이므로, 명령 실패(연결 끊김/타임아웃 등)가 사용자 요청을
+   * 500으로 깨뜨려서는 안 된다. 원본 데이터는 항상 DB(source of truth)에 있으므로:
+   *  - 읽기는 안전한 기본값(null/[]/false 등)으로 degrade → 호출부는 "캐시 미스"처럼 DB fallback.
+   *  - 쓰기는 no-op(best-effort)으로 degrade.
+   * 어느 쪽이든 에러 로그를 남겨 장애를 관측 가능하게 한다(헬스체크는 client.ping을 직접 써서
+   * Redis 다운을 그대로 보고하므로 이 래퍼의 영향을 받지 않는다).
+   */
+  private async safe<T>(op: string, fn: () => Promise<T>, fallback: T): Promise<T> {
+    try {
+      return await fn();
+    } catch (err) {
+      this.logger.error({ err, op }, `Redis 명령 실패 - fallback으로 degrade (${op})`);
+      return fallback;
+    }
+  }
+
   // ===================== Cache =====================
 
   async get(key: string): Promise<string | null> {
-    return this.redisClient.get(key);
+    return this.safe('get', () => this.redisClient.get(key), null);
   }
 
   async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
-    if (ttlSeconds) {
-      await this.redisClient.set(key, value, 'EX', ttlSeconds);
-    } else {
-      await this.redisClient.set(key, value);
-    }
+    await this.safe<unknown>(
+      'set',
+      () => (ttlSeconds ? this.redisClient.set(key, value, 'EX', ttlSeconds) : this.redisClient.set(key, value)),
+      null,
+    );
   }
 
   /**
@@ -53,16 +70,31 @@ export class RedisService implements OnModuleDestroy {
    * 매번 JSON.stringify/parse를 반복하지 않도록 한다.
    */
   async getJson<T>(key: string): Promise<T | null> {
-    const raw = await this.get(key);
-    return raw ? (JSON.parse(raw) as T) : null;
+    return this.safe<T | null>(
+      'getJson',
+      async () => {
+        const raw = await this.redisClient.get(key);
+        return raw ? (JSON.parse(raw) as T) : null;
+      },
+      null,
+    );
   }
 
   async setJson<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
-    await this.set(key, JSON.stringify(value), ttlSeconds);
+    await this.safe<unknown>(
+      'setJson',
+      () => {
+        const serialized = JSON.stringify(value);
+        return ttlSeconds
+          ? this.redisClient.set(key, serialized, 'EX', ttlSeconds)
+          : this.redisClient.set(key, serialized);
+      },
+      null,
+    );
   }
 
   async delete(key: string): Promise<number> {
-    return this.redisClient.del(key);
+    return this.safe('delete', () => this.redisClient.del(key), 0);
   }
 
   /**
@@ -72,40 +104,43 @@ export class RedisService implements OnModuleDestroy {
    * 여러 권한 조합 캐시를 한 번에 지워야 하는" 상황에 사용한다.
    */
   async deleteByPattern(pattern: string): Promise<number> {
-    const stream = this.redisClient.scanStream({ match: pattern, count: 100 });
-    let deletedCount = 0;
-
-    for await (const keys of stream as AsyncIterable<string[]>) {
-      if (keys.length === 0) continue;
-      deletedCount += await this.redisClient.del(...keys);
-    }
-
-    return deletedCount;
+    return this.safe(
+      'deleteByPattern',
+      async () => {
+        const stream = this.redisClient.scanStream({ match: pattern, count: 100 });
+        let deletedCount = 0;
+        for await (const keys of stream as AsyncIterable<string[]>) {
+          if (keys.length === 0) continue;
+          deletedCount += await this.redisClient.del(...keys);
+        }
+        return deletedCount;
+      },
+      0,
+    );
   }
 
   async exists(key: string): Promise<boolean> {
-    const count = await this.redisClient.exists(key);
-    return count > 0;
+    return this.safe('exists', async () => (await this.redisClient.exists(key)) > 0, false);
   }
 
-  /** 초 단위 남은 TTL. 키가 없으면 -2, TTL이 설정되어 있지 않으면 -1 (ioredis/Redis 규약 그대로 반환) */
+  /** 초 단위 남은 TTL. 키가 없으면 -2, TTL이 설정되어 있지 않으면 -1 (ioredis/Redis 규약 그대로 반환). 실패 시에도 -2(키 없음처럼) */
   async ttl(key: string): Promise<number> {
-    return this.redisClient.ttl(key);
+    return this.safe('ttl', () => this.redisClient.ttl(key), -2);
   }
 
   async expire(key: string, ttlSeconds: number): Promise<void> {
-    await this.redisClient.expire(key, ttlSeconds);
+    await this.safe<unknown>('expire', () => this.redisClient.expire(key, ttlSeconds), null);
   }
 
   async incr(key: string): Promise<number> {
-    return this.redisClient.incr(key);
+    return this.safe('incr', () => this.redisClient.incr(key), 0);
   }
 
   // ===================== Sorted Set (랭킹) =====================
 
   /** score를 그대로 설정 (기존 값 덮어씀) - 예: 게시글 인기 점수 초기화 */
   async zAdd(key: string, score: number, member: string): Promise<void> {
-    await this.redisClient.zadd(key, score, member);
+    await this.safe<unknown>('zAdd', () => this.redisClient.zadd(key, score, member), null);
   }
 
   /**
@@ -119,33 +154,41 @@ export class RedisService implements OnModuleDestroy {
     for (const entry of entries) {
       args.push(entry.score, entry.member);
     }
-    await this.redisClient.zadd(key, ...args);
+    await this.safe<unknown>('zAddMany', () => this.redisClient.zadd(key, ...args), null);
   }
 
   /** 기존 score에 delta를 더함 - 예: 추천 발생 시 +10점 실시간 반영 */
   async zIncrBy(key: string, delta: number, member: string): Promise<number> {
-    const result = await this.redisClient.zincrby(key, delta, member);
-    return Number(result);
+    return this.safe('zIncrBy', async () => Number(await this.redisClient.zincrby(key, delta, member)), 0);
   }
 
   async zScore(key: string, member: string): Promise<number | null> {
-    const result = await this.redisClient.zscore(key, member);
-    return result === null ? null : Number(result);
+    return this.safe<number | null>(
+      'zScore',
+      async () => {
+        const result = await this.redisClient.zscore(key, member);
+        return result === null ? null : Number(result);
+      },
+      null,
+    );
   }
 
   /** 점수 내림차순 상위 N개 (인기글 랭킹 조회에 사용) */
   async zRevRangeWithScores(key: string, start: number, stop: number): Promise<Array<{ member: string; score: number }>> {
-    const raw = await this.redisClient.zrevrange(key, start, stop, 'WITHSCORES');
-    return this.pairsToScored(raw);
+    return this.safe(
+      'zRevRangeWithScores',
+      async () => this.pairsToScored(await this.redisClient.zrevrange(key, start, stop, 'WITHSCORES')),
+      [] as Array<{ member: string; score: number }>,
+    );
   }
 
   async zRemove(key: string, member: string): Promise<void> {
-    await this.redisClient.zrem(key, member);
+    await this.safe<unknown>('zRemove', () => this.redisClient.zrem(key, member), null);
   }
 
   /** 오래된 랭킹 데이터 정리(예: 어제 이전 일간 랭킹 키 자체를 TTL로 만료시키는 방식을 권장하되, 특정 구간만 지울 때 사용) */
   async zRemoveRangeByScore(key: string, min: number, max: number): Promise<void> {
-    await this.redisClient.zremrangebyscore(key, min, max);
+    await this.safe<unknown>('zRemoveRangeByScore', () => this.redisClient.zremrangebyscore(key, min, max), null);
   }
 
   private pairsToScored(raw: string[]): Array<{ member: string; score: number }> {
@@ -159,7 +202,8 @@ export class RedisService implements OnModuleDestroy {
   // ===================== Pub/Sub =====================
 
   async publish(channel: string, message: string): Promise<number> {
-    return this.redisClient.publish(channel, message);
+    // 발행 실패가 이를 유발한 행동(댓글/좋아요/신고 → 알림 생성)을 500으로 깨뜨리면 안 되므로 best-effort.
+    return this.safe('publish', () => this.redisClient.publish(channel, message), 0);
   }
 
   async publishJson<T>(channel: string, payload: T): Promise<number> {

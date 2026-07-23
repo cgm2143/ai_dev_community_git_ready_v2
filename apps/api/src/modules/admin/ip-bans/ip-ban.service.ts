@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
 import { RedisService } from '../../../infra/redis/redis.service';
 import { AdminAuditLogService } from '../../../common/services/admin-audit-log.service';
@@ -16,6 +16,8 @@ const BANNED_IPS_REDIS_KEY = 'moderation:banned-ips';
  */
 @Injectable()
 export class IpBanService implements OnModuleInit {
+  private readonly logger = new Logger(IpBanService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
@@ -76,21 +78,29 @@ export class IpBanService implements OnModuleInit {
 
   /** IpBanGuard가 매 요청마다 호출한다. */
   async isBanned(ipAddress: string): Promise<boolean> {
-    const isMember = await this.redis.client.sismember(BANNED_IPS_REDIS_KEY, ipAddress);
-    if (!isMember) return false;
+    // IpBanGuard는 가드 체인 맨 앞에서 모든 요청에 대해 실행된다. Redis 조회가 실패하면
+    // fail-open(미차단)으로 degrade한다 - Redis 장애가 전체 서비스를 500으로 마비시키는 것보다,
+    // 그 짧은 장애 동안 IP 차단만 일시적으로 우회되는 편이 낫다(차단 원본은 DB에 남아있음).
+    try {
+      const isMember = await this.redis.client.sismember(BANNED_IPS_REDIS_KEY, ipAddress);
+      if (!isMember) return false;
 
-    const ban = await this.prisma.ipBan.findUnique({ where: { ipAddress } });
-    if (!ban) {
-      await this.redis.client.srem(BANNED_IPS_REDIS_KEY, ipAddress);
+      const ban = await this.prisma.ipBan.findUnique({ where: { ipAddress } });
+      if (!ban) {
+        await this.redis.client.srem(BANNED_IPS_REDIS_KEY, ipAddress);
+        return false;
+      }
+
+      if (ban.expiresAt && ban.expiresAt.getTime() < Date.now()) {
+        await this.redis.client.srem(BANNED_IPS_REDIS_KEY, ipAddress);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      this.logger.warn(`IP 차단 확인(Redis) 실패 - 이번 요청은 통과시킵니다(fail-open) [${ipAddress}]: ${String(error)}`);
       return false;
     }
-
-    if (ban.expiresAt && ban.expiresAt.getTime() < Date.now()) {
-      await this.redis.client.srem(BANNED_IPS_REDIS_KEY, ipAddress);
-      return false;
-    }
-
-    return true;
   }
 
   private async refreshCache(): Promise<void> {

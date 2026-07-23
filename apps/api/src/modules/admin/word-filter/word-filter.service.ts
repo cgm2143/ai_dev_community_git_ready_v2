@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
 import { RedisService } from '../../../infra/redis/redis.service';
 import { AdminAuditLogService } from '../../../common/services/admin-audit-log.service';
@@ -18,6 +18,8 @@ const BANNED_WORDS_REDIS_KEY = 'moderation:banned-words';
  */
 @Injectable()
 export class WordFilterService implements OnModuleInit {
+  private readonly logger = new Logger(WordFilterService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
@@ -75,9 +77,16 @@ export class WordFilterService implements OnModuleInit {
 
   /** 텍스트에 금칙어가 하나라도 포함되어 있는지 검사한다 (대소문자 무시, 단순 부분 문자열 매칭). */
   async containsBannedWord(text: string): Promise<boolean> {
-    const words = await this.redis.client.smembers(BANNED_WORDS_REDIS_KEY);
-    const normalized = text.toLowerCase();
-    return words.some((word) => normalized.includes(word));
+    // 금칙어 목록(Redis)을 못 읽으면 fail-open(미검출)으로 degrade한다. Redis 장애가 게시글/댓글
+    // 작성을 500으로 막는 것보다, 그 순간 금칙어 검사만 건너뛰는 편이 서비스 가용성에 유리하다.
+    try {
+      const words = await this.redis.client.smembers(BANNED_WORDS_REDIS_KEY);
+      const normalized = text.toLowerCase();
+      return words.some((word) => normalized.includes(word));
+    } catch (error) {
+      this.logger.warn(`금칙어 목록(Redis) 조회 실패 - 이번 요청은 검사를 건너뜁니다: ${String(error)}`);
+      return false;
+    }
   }
 
   private async refreshCache(): Promise<void> {
