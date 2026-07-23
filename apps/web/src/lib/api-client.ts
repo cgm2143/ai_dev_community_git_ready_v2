@@ -90,7 +90,16 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}, isRet
     throw new ApiError(res.status, errorBody);
   }
 
-  return (body as ApiSuccessBody<T>).data;
+  const successBody = body as ApiSuccessBody<T>;
+
+  // 목록(페이지네이션) 응답은 서버가 배열을 data, 페이지 정보를 meta로 분리해 내려준다
+  // (백엔드 TransformInterceptor). 프론트 계약(PaginatedResponse<T> = { items, meta })에 맞춰
+  // 여기서 다시 { items, meta } 로 합쳐 반환한다. meta가 없는 일반 응답은 data를 그대로 반환한다.
+  if (successBody.meta !== undefined && Array.isArray(successBody.data)) {
+    return { items: successBody.data, meta: successBody.meta } as T;
+  }
+
+  return successBody.data;
 }
 
 /** multipart/form-data 업로드 전용 - Content-Type을 브라우저가 boundary와 함께 자동 설정하도록 절대 지정하지 않는다. */
