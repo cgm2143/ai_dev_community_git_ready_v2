@@ -29,7 +29,13 @@ export class SearchController {
   @Get('posts')
   @ApiOperation({ summary: '게시글 검색 (PostgreSQL Full Text Search)' })
   async searchPosts(@Query() query: SearchQueryDto, @CurrentUser() user?: AuthenticatedUser) {
-    return this.searchService.searchPosts(query.q, query.page ?? 1, query.limit ?? 20, user?.id);
+    const filters = {
+      categoryId: query.categoryId,
+      boardId: query.boardId,
+      tag: query.tag,
+      sort: query.sort,
+    };
+    return this.searchService.searchPosts(query.q, filters, query.page ?? 1, query.limit ?? 20, user?.id);
   }
 
   @Public()
