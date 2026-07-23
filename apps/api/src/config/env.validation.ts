@@ -74,10 +74,9 @@ const envSchema = z.object({
   // 공지 등 전체 회원 대상 알림 발송 시 한 배치에서 처리할 사용자 수 (BullMQ 재귀 팬아웃의 배치 크기)
   NOTIFICATION_BROADCAST_BATCH_SIZE: z.coerce.number().int().min(10).max(5000).default(500),
 
-  SWAGGER_ENABLED: z
-    .string()
-    .default('true')
-    .transform((value) => value === 'true'),
+  // 값 형식만 검증한다. 미설정 시 실제 활성 여부는 configuration.ts가 NODE_ENV 기준으로 결정한다
+  // (운영=비활성, dev/local=활성). 여기서 강제 default('true')를 주지 않아 "운영에서도 항상 켜짐"을 피한다.
+  SWAGGER_ENABLED: z.enum(['true', 'false']).optional(),
   SWAGGER_PATH: z.string().default('docs'),
 });
 

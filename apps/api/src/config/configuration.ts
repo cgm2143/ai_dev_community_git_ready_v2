@@ -138,7 +138,12 @@ export default () => {
       frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3001',
       apiBaseUrl: process.env.API_BASE_URL ?? 'http://localhost:3000',
       swagger: {
-        enabled: (process.env.SWAGGER_ENABLED ?? 'true') === 'true',
+        // 운영(production)에서는 기본 비활성 - API 스펙 노출과 공격 표면을 줄인다. dev/local은 기본 활성.
+        // SWAGGER_ENABLED가 명시되면 항상 그 값을 우선한다(예: 스테이징에서 강제 on, 특정 dev에서 off).
+        enabled:
+          process.env.SWAGGER_ENABLED !== undefined
+            ? process.env.SWAGGER_ENABLED === 'true'
+            : (process.env.NODE_ENV ?? 'development') !== 'production',
         path: process.env.SWAGGER_PATH ?? 'docs',
       },
     } satisfies AppConfig,
