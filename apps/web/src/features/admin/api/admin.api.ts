@@ -9,6 +9,12 @@ export interface StatsOverview {
   totalPosts: number;
   totalComments: number;
   pendingReports: number;
+  // 대시보드용 additive 확장 필드.
+  todayPosts: number;
+  todayComments: number;
+  categoryCount: number;
+  boardCount: number;
+  tagCount: number;
 }
 
 export interface ReportStats {
@@ -23,6 +29,25 @@ export function getStatsOverview() {
 
 export function getReportStats() {
   return api.get<ReportStats>('/admin/stats/reports');
+}
+
+// ── AI 운영 지표 (기존 GET /admin/ai/metrics 재사용, 메트릭 전용) ──
+export interface AiMetrics {
+  totalRequests: number;
+  successRate: number;
+  failureRate: number;
+  avgResponseTimeMs: number;
+  avgTotalTokens: number;
+  todayCost: number;
+  monthCost: number;
+  providerDistribution: { provider: string; count: number }[];
+  cacheHitCount: number;
+  queue: { name: string; waiting: number; active: number; delayed: number; failed: number };
+  deadLetterCount: number;
+}
+
+export function getAiMetrics() {
+  return api.get<AiMetrics>('/admin/ai/metrics');
 }
 
 // ── 회원 관리 ──────────────────────────────────────────
