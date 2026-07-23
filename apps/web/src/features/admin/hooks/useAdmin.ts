@@ -12,6 +12,10 @@ export function useReportStats() {
   return useQuery({ queryKey: ['admin-report-stats'], queryFn: adminApi.getReportStats });
 }
 
+export function useAiMetrics() {
+  return useQuery({ queryKey: ['admin-ai-metrics'], queryFn: adminApi.getAiMetrics });
+}
+
 // ── 회원 ──────────────────────────────────────────────
 export function useAdminUsers(params: { keyword?: string; status?: string; page?: number } = {}) {
   return useQuery({ queryKey: ['admin-users', params], queryFn: () => adminApi.getAdminUsers(params) });
