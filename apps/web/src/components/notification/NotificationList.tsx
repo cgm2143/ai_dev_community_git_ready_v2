@@ -1,11 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { Trash2 } from 'lucide-react';
+import { Trash2, MessageSquare, CornerDownRight, ThumbsUp, Megaphone, Flag, Bell, type LucideIcon } from 'lucide-react';
 import type { AppNotification } from '@/features/notifications/api/notifications.api';
 import { useNotificationMutations } from '@/features/notifications/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+/** 알림 타입별 아이콘 + 제목. 기존 enum(COMMENT/REPLY/LIKE/NOTICE/REPORT)에 표시만 매핑한다. */
+const TYPE_META: Record<AppNotification['type'], { icon: LucideIcon; title: string }> = {
+  COMMENT: { icon: MessageSquare, title: '새 댓글' },
+  REPLY: { icon: CornerDownRight, title: '새 답글' },
+  LIKE: { icon: ThumbsUp, title: '좋아요' },
+  NOTICE: { icon: Megaphone, title: '공지' },
+  REPORT: { icon: Flag, title: '신고 처리' },
+};
 
 function formatRelativeTime(iso: string): string {
   const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -28,6 +37,9 @@ function NotificationItem({ notification }: { notification: AppNotification }) {
   const { markAsRead, remove } = useNotificationMutations();
   const href = resolveLink(notification);
 
+  const meta = TYPE_META[notification.type] ?? { icon: Bell, title: '알림' };
+  const Icon = meta.icon;
+
   const content = (
     <div
       className={cn(
@@ -35,14 +47,28 @@ function NotificationItem({ notification }: { notification: AppNotification }) {
         notification.isRead ? 'bg-bg-surface' : 'bg-accent-primary-tint/40',
       )}
     >
-      <div className="flex flex-col gap-1">
-        <p className="text-sm text-text-primary">
-          {notification.message}
-          {notification.groupCount > 1 && (
-            <span className="ml-1 text-xs text-text-muted">외 {notification.groupCount - 1}건</span>
-          )}
-        </p>
-        <span className="text-xs text-text-muted">{formatRelativeTime(notification.createdAt)}</span>
+      <div className="flex min-w-0 items-start gap-2.5">
+        <span
+          className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-surface-muted text-text-secondary"
+          aria-hidden
+        >
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-medium text-text-primary">{meta.title}</span>
+            {!notification.isRead && (
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-primary" aria-label="읽지 않음" />
+            )}
+          </div>
+          <p className="text-sm text-text-secondary">
+            {notification.message}
+            {notification.groupCount > 1 && (
+              <span className="ml-1 text-xs text-text-muted">외 {notification.groupCount - 1}건</span>
+            )}
+          </p>
+          <span className="text-xs text-text-muted">{formatRelativeTime(notification.createdAt)}</span>
+        </div>
       </div>
       <Button
         variant="ghost"

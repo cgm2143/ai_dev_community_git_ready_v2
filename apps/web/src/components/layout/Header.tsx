@@ -4,9 +4,8 @@ import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Bell, Menu, Search } from 'lucide-react';
+import { Menu, Search } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
-import { useNotifications } from '@/features/notifications/hooks/useNotifications';
 import { useLogout } from '@/features/auth/hooks/useLogout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +13,7 @@ import { Logo } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 import { Navigation } from './nav/Navigation';
 import { MobileDrawer } from './nav/MobileDrawer';
+import { NotificationBell } from '@/components/notification/NotificationBell';
 
 export function Header() {
   const user = useAuthStore((state) => state.user);
@@ -22,8 +22,6 @@ export function Header() {
   const [query, setQuery] = React.useState('');
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
-  const { data: notifications } = useNotifications(false, Boolean(user));
-  const unreadCount = user ? (notifications?.meta?.unreadCount ?? 0) : 0;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,16 +71,7 @@ export function Header() {
 
           {user ? (
             <>
-              <Button variant="ghost" size="icon" aria-label="알림" asChild className="relative">
-                <Link href="/notifications">
-                  <Bell className="h-4 w-4" />
-                  {unreadCount > 0 && (
-                    <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-danger px-1 font-mono text-[10px] text-white">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                </Link>
-              </Button>
+              <NotificationBell />
               <Button variant="ghost" size="sm" asChild>
                 <Link href={`/profile/${user.nickname}`} className="flex items-center gap-2">
                   {user.profileImageUrl ? (
