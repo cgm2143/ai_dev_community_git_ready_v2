@@ -5,12 +5,26 @@
  * 동일한 인터페이스의 새 구현체를 만들어 DI 토큰만 교체하면 된다
  * (SearchService/PostsService 등 호출부는 변경 불필요).
  */
-export interface SearchRepository {
-  /** 키워드와 매칭되는 대상 id를 관련도 순으로 반환한다. */
-  searchIds(keyword: string, skip: number, take: number): Promise<string[]>;
+/** 게시글 검색 정렬 기준. 기본은 관련도(ts_rank). */
+export type PostSearchSort = 'relevance' | 'latest' | 'views' | 'likes';
 
-  /** 키워드와 매칭되는 전체 개수. */
-  countMatches(keyword: string): Promise<number>;
+/**
+ * 게시글 검색 필터/정렬. 모두 optional이며, 아무것도 주지 않으면 기존 검색(관련도순, 필터 없음)과 동일하게 동작한다.
+ * 필터/정렬은 FTS SQL 안에서 함께 처리되어야 페이지네이션(총 개수 포함)이 정확하다.
+ */
+export interface PostSearchFilters {
+  boardId?: string;
+  categoryId?: string;
+  tag?: string;
+  sort?: PostSearchSort;
+}
+
+export interface SearchRepository {
+  /** 키워드와 매칭되는 대상 id를 (필터 적용 후) 정렬 순으로 반환한다. */
+  searchIds(keyword: string, skip: number, take: number, filters?: PostSearchFilters): Promise<string[]>;
+
+  /** 키워드와 매칭되는 (필터 적용 후) 전체 개수. */
+  countMatches(keyword: string, filters?: PostSearchFilters): Promise<number>;
 
   /**
    * 자동완성용 제목 후보를 관련도 순으로 반환한다.

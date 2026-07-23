@@ -3,6 +3,7 @@ import { UserStatus } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { RedisService } from '../../infra/redis/redis.service';
 import { PostsService } from '../posts/posts.service';
+import { PostSearchFilters } from './domain/search-repository.interface';
 
 const POPULAR_TERMS_KEY = 'search:popular-terms';
 
@@ -20,9 +21,10 @@ export class SearchService {
     private readonly postsService: PostsService,
   ) {}
 
-  async searchPosts(q: string, page: number, limit: number, viewerId?: string) {
+  async searchPosts(q: string, filters: PostSearchFilters, page: number, limit: number, viewerId?: string) {
     await this.recordSearchTerm(q);
-    return this.postsService.findAll({ keyword: q, page, limit }, viewerId);
+    // 필터/정렬은 FTS SQL 안에서 처리되는 검색 전용 경로(PostsService.searchPosts)로 위임한다.
+    return this.postsService.searchPosts(q, filters, page, limit, viewerId);
   }
 
   async searchUsers(q: string, page: number, limit: number) {

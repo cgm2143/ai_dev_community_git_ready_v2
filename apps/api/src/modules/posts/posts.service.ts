@@ -16,6 +16,7 @@ import { WordFilterService } from '../admin/word-filter/word-filter.service';
 import { TagsService } from './services/tags.service';
 import { PostViewService } from './services/post-view.service';
 import { PostsSearchRepository } from './services/posts-search.repository';
+import { PostSearchFilters } from '../search/domain/search-repository.interface';
 import { RankingService, RankingPeriod } from '../ranking/ranking.service';
 import { AiAnalysisService } from '../ai/ai-analysis.service';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -247,15 +248,27 @@ export class PostsService {
     return new Date(Date.now() - hours * 60 * 60 * 1000);
   }
 
+  /**
+   * 검색 전용 진입점 (SearchService가 사용). FTS 키워드 검색에 선택적 필터(게시판/카테고리/태그)와
+   * 정렬(관련도/최신/조회/추천)을 적용한다. 필터/정렬은 FTS SQL 안에서 처리되므로 페이지네이션이 정확하다.
+   * findAll(GET /posts)의 keyword 분기는 기존 동작(관련도순, 필터 없음)을 그대로 유지한다.
+   */
+  async searchPosts(keyword: string, filters: PostSearchFilters, page: number, limit: number, viewerId?: string) {
+    const skip = (page - 1) * limit;
+    const blockedAuthorIds = viewerId ? await this.blockService.getBlockedUserIds(viewerId) : [];
+    return this.searchByKeyword(keyword, skip, limit, blockedAuthorIds, filters);
+  }
+
   private async searchByKeyword(
     keyword: string,
     skip: number,
     limit: number,
     blockedAuthorIds: string[],
+    filters?: PostSearchFilters,
   ) {
     const [ids, total] = await Promise.all([
-      this.postsSearchRepository.searchIds(keyword, skip, limit),
-      this.postsSearchRepository.countMatches(keyword),
+      this.postsSearchRepository.searchIds(keyword, skip, limit, filters),
+      this.postsSearchRepository.countMatches(keyword, filters),
     ]);
 
     if (ids.length === 0) {

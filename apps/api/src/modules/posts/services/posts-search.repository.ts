@@ -1,10 +1,26 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../infra/prisma/prisma.service';
-import { SearchRepository } from '../../search/domain/search-repository.interface';
+import {
+  PostSearchFilters,
+  PostSearchSort,
+  SearchRepository,
+} from '../../search/domain/search-repository.interface';
 
 interface SearchRow {
   id: string;
 }
+
+/**
+ * 정렬 기준 → ORDER BY 식. 화이트리스트로 고정된 SQL 조각이라(사용자 입력이 식에 끼어들지 않음)
+ * 안전하다. 관련도(relevance)는 tsquery(`query`)에 의존하므로 검색 컨텍스트에서만 유효하다.
+ */
+const ORDER_BY: Record<PostSearchSort, Prisma.Sql> = {
+  relevance: Prisma.sql`ts_rank(p.search_vector, query) DESC`,
+  latest: Prisma.sql`p.created_at DESC`,
+  views: Prisma.sql`p.view_count DESC, p.created_at DESC`,
+  likes: Prisma.sql`p.like_count DESC, p.created_at DESC`,
+};
 
 /**
  * `SearchRepository` 인터페이스의 PostgreSQL(FTS) 구현체 (7단계에서 정식 승격).
@@ -20,28 +36,62 @@ interface SearchRow {
 export class PostsSearchRepository implements SearchRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** 키워드와 매칭되는 게시글 id를 관련도(rank) 순으로 반환한다. */
-  async searchIds(keyword: string, skip: number, take: number): Promise<string[]> {
-    const rows = await this.prisma.$queryRaw<SearchRow[]>`
-      SELECT id
-      FROM posts, plainto_tsquery('simple', ${keyword}) query
-      WHERE search_vector @@ query
-        AND status = 'PUBLISHED'
-        AND deleted_at IS NULL
-      ORDER BY ts_rank(search_vector, query) DESC
+  /**
+   * FTS 매칭 + 선택적 필터(게시판/카테고리/태그) 조건을 하나의 WHERE로 합성한다.
+   * 필터는 SQL 안에서 적용되므로(검색 후 메모리 필터링 아님) 페이지네이션과 총 개수가 항상 정확하다.
+   * 값은 모두 파라미터 바인딩되어 SQL 인젝션에 안전하다.
+   */
+  private buildWhere(filters?: PostSearchFilters): Prisma.Sql {
+    const conditions: Prisma.Sql[] = [
+      Prisma.sql`p.search_vector @@ query`,
+      Prisma.sql`p.status = 'PUBLISHED'`,
+      Prisma.sql`p.deleted_at IS NULL`,
+    ];
+
+    if (filters?.boardId) {
+      conditions.push(Prisma.sql`p.board_id = ${filters.boardId}::uuid`);
+    }
+    if (filters?.categoryId) {
+      conditions.push(
+        Prisma.sql`p.board_id IN (SELECT id FROM boards WHERE category_id = ${filters.categoryId}::uuid)`,
+      );
+    }
+    if (filters?.tag) {
+      conditions.push(
+        Prisma.sql`EXISTS (
+          SELECT 1 FROM post_tags pt
+          JOIN tags t ON t.id = pt.tag_id
+          WHERE pt.post_id = p.id AND t.name = ${filters.tag}
+        )`,
+      );
+    }
+
+    return Prisma.join(conditions, ' AND ');
+  }
+
+  /** 키워드와 매칭되는 게시글 id를 (필터 적용 후) 정렬 순으로 반환한다. 정렬 미지정 시 관련도(ts_rank). */
+  async searchIds(keyword: string, skip: number, take: number, filters?: PostSearchFilters): Promise<string[]> {
+    const where = this.buildWhere(filters);
+    const orderBy = ORDER_BY[filters?.sort ?? 'relevance'];
+
+    const rows = await this.prisma.$queryRaw<SearchRow[]>(Prisma.sql`
+      SELECT p.id
+      FROM posts p, plainto_tsquery('simple', ${keyword}) query
+      WHERE ${where}
+      ORDER BY ${orderBy}
       LIMIT ${take} OFFSET ${skip}
-    `;
+    `);
     return rows.map((row) => row.id);
   }
 
-  async countMatches(keyword: string): Promise<number> {
-    const rows = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+  async countMatches(keyword: string, filters?: PostSearchFilters): Promise<number> {
+    const where = this.buildWhere(filters);
+
+    const rows = await this.prisma.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
       SELECT COUNT(*) AS count
-      FROM posts, plainto_tsquery('simple', ${keyword}) query
-      WHERE search_vector @@ query
-        AND status = 'PUBLISHED'
-        AND deleted_at IS NULL
-    `;
+      FROM posts p, plainto_tsquery('simple', ${keyword}) query
+      WHERE ${where}
+    `);
     return Number(rows[0]?.count ?? 0);
   }
 

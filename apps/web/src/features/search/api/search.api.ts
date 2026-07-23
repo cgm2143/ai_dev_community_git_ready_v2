@@ -1,8 +1,15 @@
 import { api } from '@/lib/api-client';
 import type { PaginatedResponse, PostListItem } from '@/features/posts/api/posts.api';
 
+/** 관련도(기본) | 최신순 | 조회순 | 추천순. */
+export type SearchSort = 'relevance' | 'latest' | 'views' | 'likes';
+
 export interface SearchPostsParams {
   q: string;
+  categoryId?: string;
+  boardId?: string;
+  tag?: string;
+  sort?: SearchSort;
   page?: number;
   limit?: number;
 }
@@ -10,6 +17,10 @@ export interface SearchPostsParams {
 export function searchPosts(params: SearchPostsParams) {
   const search = new URLSearchParams();
   search.set('q', params.q);
+  if (params.categoryId) search.set('categoryId', params.categoryId);
+  if (params.boardId) search.set('boardId', params.boardId);
+  if (params.tag) search.set('tag', params.tag);
+  if (params.sort && params.sort !== 'relevance') search.set('sort', params.sort);
   if (params.page) search.set('page', String(params.page));
   if (params.limit) search.set('limit', String(params.limit));
   return api.get<PaginatedResponse<PostListItem>>(`/search/posts?${search.toString()}`);
