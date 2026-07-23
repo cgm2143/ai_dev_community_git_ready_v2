@@ -1,13 +1,11 @@
 import { Header } from '@/components/layout/Header';
-import { TopBanner } from '@/components/layout/TopBanner';
 import { LeftAside } from '@/components/layout/LeftAside';
 import { RightSidebar } from '@/components/layout/RightSidebar';
 
 /**
- * 메인 레이아웃 - 향후 광고 배너/사이드바 확장을 위한 포털형 구조.
+ * 메인 레이아웃 - 좌/우 사이드바 확장을 위한 포털형 구조.
  *
  *   ┌───────────────── Navigation (Header) ─────────────────┐
- *   ├───────────────────── Top Banner ──────────────────────┤
  *   ├────────────┬──────────────────────────┬───────────────┤
  *   │ Left Aside │        Main Content       │ Right Sidebar │
  *   │  (240px)   │         (flex-1)          │    (300px)    │
@@ -21,7 +19,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <TopBanner />
       <div className="mx-auto flex w-full max-w-[1600px] flex-1">
         <LeftAside />
         <main className="min-w-0 flex-1 px-4 py-5">
