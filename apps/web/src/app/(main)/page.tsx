@@ -17,8 +17,12 @@ export default function HomePage() {
   return (
     <div className="flex flex-col gap-8">
       <HotSection />
-      <RealtimePopularSection />
-      <TrendingViewsSection />
+      {/* 실시간 인기 / 지금 많이 보는 글: 가로 폭이 과하게 길어 보이지 않도록 한 행에 좌우 2단으로 배치.
+          모바일(단일 컬럼)은 세로 스택, 태블릿(md+)부터 나란히. 좁아지면 제목은 잘려서 표시된다. */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <RealtimePopularSection />
+        <TrendingViewsSection />
+      </div>
       <CategoryLatestSection />
       <AiRecommendSection />
       {FEATURE_HUBS.map((hub) => (
