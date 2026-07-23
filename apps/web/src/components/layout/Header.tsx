@@ -31,39 +31,34 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-border-hairline bg-bg-surface">
-      {/* 본문(홈 피드 등)이 max-w-[1280px]로 가운데 정렬되는 것과 맞춰, 헤더 내용도
-          같은 폭 안에서 가운데로 모이도록 감싼다 - 그렇지 않으면 화면이 넓을 때
-          로고/버튼이 브라우저 양쪽 끝에 붙어 본문과 정렬이 안 맞아 보인다. */}
-      <div className="mx-auto flex h-14 w-full max-w-[1280px] items-center gap-3 px-4">
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          aria-label="메뉴 열기"
-          className="-ml-1 rounded-md p-1.5 text-text-secondary hover:bg-bg-surface-muted md:hidden"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-
-        <Logo />
-
-        <form onSubmit={handleSearchSubmit} className="relative hidden max-w-md flex-1 md:block">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="게시글, 태그, 회원 검색"
-            className="pl-9"
-          />
-        </form>
-
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="검색"
-            className="md:hidden"
-            onClick={() => setSearchOpen(true)}
+      {/*
+        단일 상단 바: [로고(좌)] · [메뉴(정중앙)] · [액션(우)].
+        grid-cols-[1fr_auto_1fr]로 좌/우 컬럼 폭을 동일하게 잡아, 가운데 메뉴가 뷰포트 정중앙에 오게 한다
+        (좌우 콘텐츠 폭이 달라도 중앙 정렬이 흔들리지 않는다). 모바일은 햄버거 → MobileDrawer.
+      */}
+      <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center justify-between gap-3 px-4 lg:grid lg:grid-cols-[1fr_auto_1fr]">
+        {/* 좌: 모바일 햄버거 + 로고 */}
+        <div className="flex items-center gap-2 justify-self-start">
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="메뉴 열기"
+            className="-ml-1 rounded-md p-1.5 text-text-secondary hover:bg-bg-surface-muted lg:hidden"
           >
+            <Menu className="h-5 w-5" />
+          </button>
+          <Logo />
+        </div>
+
+        {/* 중앙: 데스크톱(lg+) GNB(정중앙). 모바일·태블릿(<lg)은 햄버거 메뉴를 사용해
+            좁은 폭에서 로고/메뉴/액션이 한 줄에 몰려 정중앙 정렬이 깨지는 것을 방지한다. */}
+        <div className="hidden justify-self-center lg:block">
+          <Navigation />
+        </div>
+
+        {/* 우: 검색 아이콘 + 테마 + 알림 + 프로필/로그인 */}
+        <div className="flex items-center gap-1.5 justify-self-end">
+          <Button variant="ghost" size="icon" aria-label="검색" onClick={() => setSearchOpen(true)}>
             <Search className="h-4 w-4" />
           </Button>
 
@@ -83,7 +78,7 @@ export function Header() {
                       className="rounded-md object-cover"
                     />
                   ) : null}
-                  {user.nickname}
+                  <span className="hidden sm:inline">{user.nickname}</span>
                 </Link>
               </Button>
               <Button
@@ -108,18 +103,11 @@ export function Header() {
         </div>
       </div>
 
-      {/* 상단 GNB (데스크톱/태블릿). 모바일에서는 햄버거 버튼 → MobileDrawer를 사용한다. */}
-      <div className="hidden border-t border-border-hairline md:block">
-        <div className="mx-auto w-full max-w-[1280px] px-2">
-          <Navigation />
-        </div>
-      </div>
-
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
-      {/* 모바일 검색 오버레이 - 헤더에 검색창이 숨겨지는 좁은 화면에서 검색 아이콘으로 연다. */}
+      {/* 검색 오버레이 - 모든 화면에서 검색 아이콘으로 연다(기존 검색 기능/라우팅 그대로). */}
       {searchOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black/40" onClick={() => setSearchOpen(false)} />
           <div className="absolute inset-x-0 top-0 border-b border-border-hairline bg-bg-surface p-3">
             <form
@@ -127,7 +115,7 @@ export function Header() {
                 handleSearchSubmit(e);
                 setSearchOpen(false);
               }}
-              className="flex items-center gap-2"
+              className="mx-auto flex w-full max-w-[1600px] items-center gap-2 px-1"
             >
               <div className="relative flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
