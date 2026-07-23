@@ -32,8 +32,15 @@ export class PostViewService {
   }
 
   async recordView(postId: string): Promise<void> {
-    await this.redis.incr(`${PENDING_KEY_PREFIX}${postId}`);
-    await this.redis.client.sadd(PENDING_IDS_SET, postId);
+    // 조회수 집계는 best-effort다. Redis 장애가 게시글 조회(GET /posts/:id)를 500으로
+    // 깨뜨리면 안 되므로, 실패해도 로그만 남기고 조용히 넘어간다(원본 게시글은 이미 DB에서 조회됨).
+    // incr은 RedisService 래퍼가 이미 degrade 처리하지만, sadd는 원시 client라 함께 감싼다.
+    try {
+      await this.redis.incr(`${PENDING_KEY_PREFIX}${postId}`);
+      await this.redis.client.sadd(PENDING_IDS_SET, postId);
+    } catch (error) {
+      this.logger.warn({ err: error, postId }, '조회수 집계(Redis)에 실패했습니다. 조회 응답에는 영향 없음.');
+    }
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
