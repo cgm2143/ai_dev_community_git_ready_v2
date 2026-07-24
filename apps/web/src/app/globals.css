@@ -24,9 +24,12 @@
   --accent-danger: #d0403e;
   --accent-ai-teal: #0e9488;
 
-  --font-display: 'Space Grotesk', sans-serif;
-  --font-body: 'Inter', 'Pretendard', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  /* 사이트 전체 글꼴을 Pretendard로 통일한다(제목/본문/메타 모두 동일). */
+  --font-display: var(--font-pretendard), 'Pretendard', system-ui, sans-serif;
+  --font-body: var(--font-pretendard), 'Pretendard', system-ui, sans-serif;
+  --font-mono: var(--font-pretendard), 'Pretendard', system-ui, sans-serif;
+  /* 실제 코드 블록(<pre>/<code>, 마크다운 에디터)만 가독성을 위해 등폭 글꼴을 유지한다. */
+  --font-code: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 }
 
 .dark {

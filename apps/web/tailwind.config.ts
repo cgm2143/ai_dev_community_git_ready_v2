@@ -37,7 +37,9 @@ const config: Config = {
       fontFamily: {
         display: ['var(--font-display)', 'sans-serif'],
         body: ['var(--font-body)', 'sans-serif'],
-        mono: ['var(--font-mono)', 'monospace'],
+        // mono(날짜/카운트 등 UI 메타)도 Pretendard로 통일. 실제 코드 블록은 아래 code(등폭)를 쓴다.
+        mono: ['var(--font-mono)', 'sans-serif'],
+        code: ['var(--font-code)', 'monospace'],
       },
       fontSize: {
         xs: ['12px', '1.4'],

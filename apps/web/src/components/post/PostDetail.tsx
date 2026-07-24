@@ -72,7 +72,7 @@ export function PostDetail({ post }: { post: PostDetailType }) {
 
       {/* contentHtml은 백엔드 MarkdownService(4단계)가 sanitize-html로 정화한 결과이므로 그대로 렌더링한다. */}
       <div
-        className="prose prose-sm max-w-none text-text-primary [&_a]:text-accent-primary-strong [&_code]:font-mono [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-bg-surface-muted [&_pre]:p-3"
+        className="prose prose-sm max-w-none text-text-primary [&_a]:text-accent-primary-strong [&_code]:font-code [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-bg-surface-muted [&_pre]:p-3 [&_pre]:font-code"
         dangerouslySetInnerHTML={{ __html: post.contentHtml }}
       />
 
