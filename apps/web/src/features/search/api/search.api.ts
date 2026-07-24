@@ -34,3 +34,13 @@ export interface AutocompleteResult {
 export function autocomplete(q: string) {
   return api.get<AutocompleteResult>(`/search/autocomplete?q=${encodeURIComponent(q)}`);
 }
+
+/** 인기 검색어(Redis ZSET 누적 집계). 검색 시 자동으로 집계된다(GET /search/popular). */
+export interface PopularSearchTerm {
+  term: string;
+  score: number;
+}
+
+export function getPopularSearchTerms() {
+  return api.get<PopularSearchTerm[]>('/search/popular');
+}
