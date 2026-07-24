@@ -32,7 +32,7 @@ export function PostDetail({ post }: { post: PostDetailType }) {
   };
 
   return (
-    <article className="flex flex-col gap-5">
+    <article className="flex flex-col gap-5 rounded-card border border-border-hairline bg-bg-surface p-5 sm:p-6">
       <header className="flex flex-col gap-2 border-b border-border-hairline pb-4">
         <div className="flex items-center gap-2 text-xs text-text-muted">
           <Link
