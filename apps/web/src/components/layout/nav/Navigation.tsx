@@ -3,65 +3,59 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ChevronDown } from 'lucide-react';
 import { useCategories } from '@/features/boards/hooks/useCategories';
-import { MoreMenu } from './MoreMenu';
-import { MegaMenu } from './MegaMenu';
 
-// isPrimaryMenu=true가 하나도 없을 때만 쓰는 fallback 개수(menuOrder 상위 N개). 초과분은 "더보기"로.
+// isPrimaryMenu=true가 하나도 없을 때만 쓰는 fallback 개수(menuOrder 상위 N개).
 const FALLBACK_PRIMARY_COUNT = 5;
 
+// 마우스 오버 시 글자색을 포인트(보라)로 바꾼다. 열림(active) 상태는 보라 틴트 배경 + 보라 글자.
 function itemClass(active: boolean): string {
-  return `flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+  return `flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors ${
     active
       ? 'bg-accent-primary-tint text-accent-primary-strong'
-      : 'text-text-secondary hover:bg-bg-surface-muted hover:text-text-primary'
+      : 'text-text-secondary hover:text-accent-primary-strong'
   }`;
 }
 
 /**
  * 데스크톱/태블릿 상단 GNB.
- * - 🔥 HOT: 인기글 피드(/hot)로 가는 고정 항목(카테고리가 아니라 특수 피드).
- * - isPrimaryMenu=true인 카테고리가 하나라도 있으면 → 그 카테고리들만 상단에 노출(menuOrder 순, 관리자 제어).
- * - isPrimaryMenu=true가 하나도 없으면 → menuOrder 상위 FALLBACK_PRIMARY_COUNT개를 상단에 노출(fallback).
- * - 상단에 오르지 않은 나머지는 모두 "더보기(Mega Menu)"로 그룹화.
- *
- * "더보기"의 열림 상태와 Mega Menu 패널은 이 컴포넌트가 소유한다. 패널을 트리거 버튼이 아니라
- * 네비게이션 컨테이너 왼쪽 기준으로 배치해야 화면 밖으로 잘리지 않기 때문이다. 패널이 컨테이너의
- * DOM 자식이므로, 컨테이너를 벗어날 때만 닫혀 버튼↔패널 사이 이동 시 깜빡이지 않는다.
+ * - 🔥 HOT: 인기글 피드(/hot)로 가는 고정 항목.
+ * - 각 1차 카테고리는 클릭하면 2차 카테고리(게시판) 목록이 펼쳐지고, 다시 클릭하면 접힌다(토글, 한 번에 하나).
+ * - "더보기(Mega Menu)"는 제거했다. isPrimaryMenu=true 카테고리만 상단에 노출한다.
  */
 export function Navigation() {
   const { data: categories } = useCategories();
   const pathname = usePathname();
 
-  // menuOrder 순 정렬 후: isPrimaryMenu=true가 있으면 그것만(관리자 제어), 없으면 상위 N개(fallback)를 상단에.
   const sorted = [...(categories ?? [])].sort((a, b) => a.menuOrder - b.menuOrder);
   const flagged = sorted.filter((category) => category.isPrimaryMenu);
   const primary = flagged.length > 0 ? flagged : sorted.slice(0, FALLBACK_PRIMARY_COUNT);
-  const primaryIds = new Set(primary.map((category) => category.id));
-  const secondary = sorted.filter((category) => !primaryIds.has(category.id));
 
-  const [moreOpen, setMoreOpen] = React.useState(false);
-  const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [openId, setOpenId] = React.useState<string | null>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const openNow = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    setMoreOpen(true);
-  };
-  const closeSoon = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => setMoreOpen(false), 120);
-  };
+  // 바깥 영역 클릭 시 닫기.
+  React.useEffect(() => {
+    if (!openId) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) setOpenId(null);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [openId]);
 
-  React.useEffect(() => () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-  }, []);
+  // 게시판으로 이동(경로 변경)하면 열린 메뉴를 닫는다.
+  React.useEffect(() => {
+    setOpenId(null);
+  }, [pathname]);
 
   return (
     <div
+      ref={containerRef}
       className="relative"
-      onMouseLeave={secondary.length > 0 ? closeSoon : undefined}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') setMoreOpen(false);
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') setOpenId(null);
       }}
     >
       <nav className="flex items-center gap-0.5">
@@ -70,24 +64,46 @@ export function Navigation() {
           HOT
         </Link>
 
-        {primary.map((category) => (
-          <Link
-            key={category.id}
-            href={`/categories/${category.slug}`}
-            className={itemClass(pathname === `/categories/${category.slug}`)}
-          >
-            {category.name}
-          </Link>
-        ))}
+        {primary.map((category) => {
+          const isOpen = openId === category.id;
+          return (
+            <div key={category.id} className="relative">
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() => setOpenId((prev) => (prev === category.id ? null : category.id))}
+                className={itemClass(isOpen)}
+              >
+                {category.name}
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+              </button>
 
-        {secondary.length > 0 && (
-          <MoreMenu open={moreOpen} onOpen={openNow} onToggle={() => setMoreOpen((prev) => !prev)} />
-        )}
+              {/* 2차 카테고리(게시판) 드롭다운 */}
+              {isOpen && (
+                <div className="absolute left-0 top-full z-50 mt-1 min-w-[180px] rounded-md border border-border-hairline bg-bg-surface p-1.5 shadow-lg">
+                  {category.boards.length > 0 ? (
+                    <ul className="flex flex-col">
+                      {category.boards.map((board) => (
+                        <li key={board.id}>
+                          <Link
+                            href={`/boards/${board.slug}`}
+                            onClick={() => setOpenId(null)}
+                            className="block rounded px-3 py-1.5 text-sm text-text-secondary transition-colors hover:bg-bg-surface-muted hover:text-accent-primary-strong"
+                          >
+                            {board.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="px-3 py-1.5 text-xs text-text-muted">준비 중</p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </nav>
-
-      {secondary.length > 0 && (
-        <MegaMenu categories={secondary} open={moreOpen} onClose={() => setMoreOpen(false)} />
-      )}
     </div>
   );
 }
