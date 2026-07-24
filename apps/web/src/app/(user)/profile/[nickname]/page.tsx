@@ -7,6 +7,7 @@ import { useProfile } from '@/features/users/hooks/useProfile';
 import { useAuthStore } from '@/stores/auth-store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { BookmarksSection } from '@/components/profile/BookmarksSection';
 
 export default function ProfilePage({ params }: { params: { nickname: string } }) {
   const { data: profile, isLoading, isError } = useProfile(params.nickname);
@@ -30,8 +31,9 @@ export default function ProfilePage({ params }: { params: { nickname: string } }
   }
 
   return (
-    <Card>
-      <CardContent className="flex items-center gap-4 pt-5">
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardContent className="flex items-center gap-4 pt-5">
         {profile.profileImageUrl ? (
           <Image
             src={profile.profileImageUrl}
@@ -62,7 +64,10 @@ export default function ProfilePage({ params }: { params: { nickname: string } }
             {new Date(profile.createdAt).toLocaleDateString('ko-KR')} 가입
           </p>
         </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {isOwnProfile && <BookmarksSection />}
+    </div>
   );
 }

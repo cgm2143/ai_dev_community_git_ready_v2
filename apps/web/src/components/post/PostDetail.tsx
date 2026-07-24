@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Heart, ThumbsDown, Bookmark, Pencil, Trash2, Flag } from 'lucide-react';
+import { Heart, Bookmark, Pencil, Trash2, Flag } from 'lucide-react';
 import type { PostDetail as PostDetailType } from '@/features/posts/api/posts.api';
 import { useReactToPost } from '@/features/reactions/hooks/useReactions';
 import { useBookmark } from '@/features/bookmarks/hooks/useBookmark';
@@ -118,21 +118,17 @@ export function PostDetail({ post }: { post: PostDetailType }) {
         >
           <Heart className={cn('h-4 w-4', reactMutation.data?.type === 'LIKE' && 'fill-current')} /> {post.likeCount}
         </Button>
-        <Button
-          variant="outline"
-          className={cn(reactMutation.data?.type === 'DISLIKE' && 'border-accent-danger text-accent-danger')}
-          onClick={() => reactMutation.mutate('DISLIKE')}
-        >
-          <ThumbsDown className="h-4 w-4" /> 비추천 {post.dislikeCount}
-        </Button>
-        <Button
-          variant="ghost"
-          className={cn('ml-auto', bookmark.isBookmarked && 'text-accent-amber')}
-          onClick={bookmark.toggle}
-          disabled={bookmark.isPending}
-        >
-          <Bookmark className="h-4 w-4" /> 북마크
-        </Button>
+        {currentUser && (
+          <Button
+            variant="ghost"
+            aria-label="북마크"
+            className={cn('ml-auto', bookmark.isBookmarked && 'text-accent-amber')}
+            onClick={bookmark.toggle}
+            disabled={bookmark.isPending}
+          >
+            <Bookmark className={cn('h-4 w-4', bookmark.isBookmarked && 'fill-current')} />
+          </Button>
+        )}
         {canReport && (
           <Button variant="ghost" onClick={() => setReportOpen(true)} aria-label="게시글 신고">
             <Flag className="h-4 w-4" /> 신고
