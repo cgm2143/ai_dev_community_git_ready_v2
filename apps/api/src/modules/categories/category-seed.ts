@@ -18,23 +18,22 @@ export interface CategorySeed {
  * 공통으로 사용한다. 하드코딩을 이 파일 한 곳으로 모아 두 경로가 항상 동일한 결과를 내도록 한다.
  */
 export const DEFAULT_CATEGORY_SEED: CategorySeed[] = [
-  // ── 상단 GNB (primary) ──
+  // ── 상단 GNB (primary) — 노출 순서대로 ──
   { name: 'AI', slug: 'ai', icon: '🤖', isPrimaryMenu: true, boards: ['ChatGPT', 'Claude', 'Gemini', 'AI 이미지', 'AI 영상', 'AI 개발', 'AI 자동화', '프롬프트', 'AI 뉴스'] },
   { name: '게임', slug: 'game', icon: '🎮', isPrimaryMenu: true, boards: ['PC', '모바일', '콘솔', 'Steam', '롤', '발로란트', '메이플'] },
   { name: '재테크', slug: 'money', icon: '💰', isPrimaryMenu: true, boards: ['국내주식', '미국주식', 'ETF', '가상자산', '부동산', '청약', '절약', '경제뉴스'] },
   { name: '직장·부업', slug: 'work', icon: '💼', isPrimaryMenu: true, boards: ['취업', '이직', '회사생활', '창업', '프리랜서', '스마트스토어', '애드센스'] },
-  { name: '디지털', slug: 'digital', icon: '💻', isPrimaryMenu: true, boards: ['스마트폰', 'PC', 'Apple', 'Samsung', '프로그래밍', 'IT 뉴스'] },
+  { name: '자동차', slug: 'car', icon: '🚗', isPrimaryMenu: true, boards: ['신차', '중고차', '전기차'] },
+  { name: '여행', slug: 'travel', icon: '✈️', isPrimaryMenu: true, boards: ['국내', '일본', '동남아'] },
+  { name: '맛집', slug: 'food', icon: '🍜', isPrimaryMenu: true, boards: ['맛집', '카페', '레시피'] },
+  { name: '건강·운동', slug: 'health', icon: '🏃', isPrimaryMenu: true, boards: ['헬스', '러닝', '다이어트'] },
+  { name: '중고거래', slug: 'market', icon: '🛒', isPrimaryMenu: true, boards: ['삽니다', '팝니다', '나눔'] },
+  { name: '자유게시판', slug: 'community', icon: '💬', isPrimaryMenu: true, boards: ['자유게시판', '질문답변', '유머', '정보공유'] },
   // ── 더보기 Mega Menu (secondary) ──
-  // 커뮤니티: HOT 허브가 모아 보여주는 자유게시판/질문답변 등 일반 게시판의 실제 소속 카테고리.
-  { name: '커뮤니티', slug: 'community', icon: '💬', isPrimaryMenu: false, boards: ['자유게시판', '질문답변', '유머', '정보공유'] },
-  { name: '자동차', slug: 'car', icon: '🚗', isPrimaryMenu: false, boards: ['신차', '중고차', '전기차'] },
-  { name: '여행', slug: 'travel', icon: '✈️', isPrimaryMenu: false, boards: ['국내', '일본', '동남아'] },
-  { name: '음식', slug: 'food', icon: '🍜', isPrimaryMenu: false, boards: ['맛집', '카페', '레시피'] },
+  { name: '디지털', slug: 'digital', icon: '💻', isPrimaryMenu: false, boards: ['스마트폰', 'PC', 'Apple', 'Samsung', '프로그래밍', 'IT 뉴스'] },
   { name: '영화', slug: 'movie', icon: '🎬', isPrimaryMenu: false, boards: ['영화', '드라마', 'OTT'] },
-  { name: '건강·운동', slug: 'health', icon: '🏃', isPrimaryMenu: false, boards: ['헬스', '러닝', '다이어트'] },
   { name: '가족', slug: 'family', icon: '👶', isPrimaryMenu: false, boards: ['육아', '교육', '반려동물'] },
   { name: '취미', slug: 'hobby', icon: '🎨', isPrimaryMenu: false, boards: ['사진', '음악', '독서'] },
-  { name: '중고거래', slug: 'market', icon: '🛒', isPrimaryMenu: false, boards: ['삽니다', '팝니다', '나눔'] },
 ];
 
 /** 게시판 slug 생성: `{카테고리slug}-{정규화된 게시판명}` (한글 허용). 카테고리 접두사로 중복을 방지한다. */
