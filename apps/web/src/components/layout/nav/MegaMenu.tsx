@@ -32,7 +32,6 @@ export function MegaMenu({
               onClick={onClose}
               className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-text-primary hover:text-accent-primary-strong"
             >
-              {category.icon && <span aria-hidden>{category.icon}</span>}
               {category.name}
             </Link>
             <ul className="flex flex-col gap-0.5">

@@ -76,7 +76,6 @@ export function Navigation() {
             href={`/categories/${category.slug}`}
             className={itemClass(pathname === `/categories/${category.slug}`)}
           >
-            {category.icon && <span aria-hidden>{category.icon}</span>}
             {category.name}
           </Link>
         ))}
