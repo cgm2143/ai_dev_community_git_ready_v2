@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ThumbsUp, ThumbsDown, Bookmark, Pencil, Trash2, Eye, Flag } from 'lucide-react';
+import { Heart, ThumbsDown, Bookmark, Pencil, Trash2, Flag } from 'lucide-react';
 import type { PostDetail as PostDetailType } from '@/features/posts/api/posts.api';
 import { useReactToPost } from '@/features/reactions/hooks/useReactions';
 import { useBookmark } from '@/features/bookmarks/hooks/useBookmark';
@@ -53,9 +53,11 @@ export function PostDetail({ post }: { post: PostDetailType }) {
             <span className="font-medium text-text-secondary">{post.authorNickname}</span>
             <span>{new Date(post.createdAt).toLocaleString('ko-KR')}</span>
           </div>
-          <span className="flex items-center gap-1">
-            <Eye className="h-3.5 w-3.5" /> {post.viewCount}
-          </span>
+          <div className="flex items-center gap-3">
+            <span>조회 {post.viewCount}</span>
+            <span>공감 {post.likeCount}</span>
+            <span>댓글 {post.commentCount}</span>
+          </div>
         </div>
 
         {isOwner && (
@@ -110,10 +112,11 @@ export function PostDetail({ post }: { post: PostDetailType }) {
       <div className="flex items-center gap-2 border-y border-border-hairline py-4">
         <Button
           variant="outline"
-          className={cn(reactMutation.data?.type === 'LIKE' && 'border-accent-primary text-accent-primary-strong')}
+          aria-label="공감"
+          className={cn(reactMutation.data?.type === 'LIKE' && 'border-accent-danger text-accent-danger')}
           onClick={() => reactMutation.mutate('LIKE')}
         >
-          <ThumbsUp className="h-4 w-4" /> 추천 {post.likeCount}
+          <Heart className={cn('h-4 w-4', reactMutation.data?.type === 'LIKE' && 'fill-current')} /> {post.likeCount}
         </Button>
         <Button
           variant="outline"
