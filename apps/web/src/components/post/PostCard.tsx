@@ -66,7 +66,28 @@ export function PostCard({ post, hot }: { post: PostListItem; hot?: boolean }) {
         )}
 
         <div className="mt-1 flex items-center gap-3 font-mono text-xs text-text-muted">
-          <span>{post.authorNickname}</span>
+          <span className="flex items-center gap-1.5">
+            {post.authorProfileImageUrl ? (
+              // 작성자 프로필 사진(닉네임 왼쪽). 다양한 외부 호스트가 올 수 있어 next/image의
+              // 도메인 allowlist 제약/런타임 에러를 피하려 일반 img를 쓴다(작은 아바타라 최적화 이득 미미).
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={post.authorProfileImageUrl}
+                alt=""
+                className="h-[18px] w-[18px] shrink-0 rounded-full object-cover"
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <span
+                aria-hidden
+                className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-bg-surface-muted text-[9px] font-semibold text-text-secondary"
+              >
+                {post.authorNickname.charAt(0).toUpperCase()}
+              </span>
+            )}
+            {post.authorNickname}
+          </span>
           <span>·</span>
           <span>{formatRelativeTime(post.createdAt)}</span>
           <span className="ml-auto flex items-center gap-3">
