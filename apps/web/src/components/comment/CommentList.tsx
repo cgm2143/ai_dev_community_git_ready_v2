@@ -20,9 +20,14 @@ export function CommentList({ postId }: { postId: string }) {
 
       {isLoading && <p className="text-sm text-text-muted">댓글을 불러오는 중...</p>}
 
-      <div className="flex flex-col divide-y divide-border-hairline">
+      <div className="flex flex-col gap-3">
         {data?.items.map((comment) => (
-          <CommentItem key={comment.id} postId={postId} comment={comment} />
+          <div
+            key={comment.id}
+            className="rounded-card border border-border-hairline bg-bg-surface p-4"
+          >
+            <CommentItem postId={postId} comment={comment} />
+          </div>
         ))}
       </div>
 

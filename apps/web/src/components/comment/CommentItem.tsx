@@ -36,7 +36,7 @@ export function CommentItem({ postId, comment }: { postId: string; comment: Comm
   const canReport = Boolean(currentUser) && !isOwner && !comment.isDeleted;
 
   return (
-    <div className="flex flex-col gap-2 py-3">
+    <div className="flex flex-col gap-2">
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2 text-xs text-text-muted">
@@ -122,7 +122,7 @@ export function CommentItem({ postId, comment }: { postId: string; comment: Comm
       )}
 
       {showReplies && (
-        <div className="ml-6 flex flex-col divide-y divide-border-hairline border-l border-border-hairline pl-4">
+        <div className="ml-6 flex flex-col gap-3 border-l border-border-hairline pl-4">
           {repliesQuery.isLoading && <p className="py-2 text-xs text-text-muted">답글을 불러오는 중...</p>}
           {repliesQuery.data?.map((reply) => (
             <CommentItem key={reply.id} postId={postId} comment={reply} />
