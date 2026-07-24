@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { PenSquare } from 'lucide-react';
-import { useBoard, useBoardPosts } from '@/features/boards/hooks/useBoard';
+import { useBoardPosts } from '@/features/boards/hooks/useBoard';
 import { PostList } from '@/components/post/PostList';
 import { Pagination } from '@/components/common/Pagination';
 import { Breadcrumb } from '@/components/common/Breadcrumb';
@@ -11,23 +11,27 @@ import { Button } from '@/components/ui/button';
 
 const PAGE_SIZE = 20;
 
-export function BoardView({ boardSlug }: { boardSlug: string }) {
+interface BoardViewProps {
+  boardSlug: string;
+  /** 서버에서 미리 받아온 게시판 이름. 클라이언트 로딩 중 URL 인코딩된 slug가 잠깐 노출되는 것을 막는다. */
+  boardName: string;
+  boardDescription: string | null;
+}
+
+export function BoardView({ boardSlug, boardName, boardDescription }: BoardViewProps) {
   const [page, setPage] = React.useState(1);
   const [sort, setSort] = React.useState<'latest' | 'popular'>('latest');
 
-  const boardQuery = useBoard(boardSlug);
   const postsQuery = useBoardPosts(boardSlug, { page, limit: PAGE_SIZE, sort });
 
   return (
     <div className="flex flex-col gap-4">
-      <Breadcrumb items={[{ label: boardQuery.data?.name ?? boardSlug }]} />
+      <Breadcrumb items={[{ label: boardName }]} />
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-xl font-semibold text-text-primary">
-            {boardQuery.data?.name ?? boardSlug}
-          </h1>
-          {boardQuery.data?.description && (
-            <p className="mt-1 text-sm text-text-secondary">{boardQuery.data.description}</p>
+          <h1 className="font-display text-xl font-semibold text-text-primary">{boardName}</h1>
+          {boardDescription && (
+            <p className="mt-1 text-sm text-text-secondary">{boardDescription}</p>
           )}
         </div>
         <Button variant="primary" size="sm" asChild>

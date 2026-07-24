@@ -24,5 +24,11 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 export default async function Page({ params }: { params: Params }) {
   const board = await serverGet<BoardSummary>(`/boards/${params.boardSlug}`);
   if (!board) notFound();
-  return <BoardView boardSlug={params.boardSlug} />;
+  return (
+    <BoardView
+      boardSlug={params.boardSlug}
+      boardName={board.name}
+      boardDescription={board.description}
+    />
+  );
 }
