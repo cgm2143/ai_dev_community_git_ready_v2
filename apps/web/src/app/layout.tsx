@@ -1,24 +1,15 @@
 import type { Metadata } from 'next';
-import { Space_Grotesk, Inter, JetBrains_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import { Providers } from './providers';
 import { Footer } from '@/components/layout/Footer';
 import './globals.css';
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-display',
-  display: 'swap',
-});
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-body',
-  display: 'swap',
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
+// Pretendard Variable (self-hosted). 사이트 전체 기본 글꼴.
+// 제목/본문/메타(--font-display, --font-body, --font-mono)를 모두 이 한 폰트로 통일한다(globals.css).
+const pretendard = localFont({
+  src: './fonts/PretendardVariable.woff2',
+  variable: '--font-pretendard',
+  weight: '45 920',
   display: 'swap',
 });
 
@@ -30,7 +21,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // 기본값은 라이트모드. 다크모드는 헤더의 수동 토글로만 전환한다(5단계 UI 설계 정책).
-    <html lang="ko" className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="ko" className={pretendard.variable}>
       <body className="flex min-h-screen flex-col font-body">
         <Providers>
           <div className="flex flex-1 flex-col">{children}</div>

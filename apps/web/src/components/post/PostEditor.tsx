@@ -123,7 +123,7 @@ export function PostEditor({ defaultValues, onSubmit, isSubmitting, error, submi
             {...register('content')}
             rows={16}
             placeholder={'## 소제목\n본문을 Markdown으로 작성하세요.'}
-            className="w-full resize-none rounded-md border border-border-hairline bg-bg-surface p-3 font-mono text-sm text-text-primary placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+            className="w-full resize-none rounded-md border border-border-hairline bg-bg-surface p-3 font-code text-sm text-text-primary placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
           />
           {errors.content && <p className="text-xs text-accent-danger">{errors.content.message}</p>}
         </div>
