@@ -1,21 +1,16 @@
 import Link from 'next/link';
-import { MessageSquare, ThumbsUp, Eye } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { ActivityPulseBar } from './ActivityPulseBar';
 import type { PostListItem } from '@/features/posts/api/posts.api';
 
 const HOT_LIKE_THRESHOLD = 10;
 const NEW_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-function formatRelativeTime(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diffMs / (60 * 1000));
-  if (minutes < 1) return '방금 전';
-  if (minutes < 60) return `${minutes}분 전`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}시간 전`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}일 전`;
-  return new Date(iso).toLocaleDateString('ko-KR');
+/** 작성 일시를 'YYYY.MM.DD HH:MM' 형식으로 표기한다(상대시간 대신 절대 날짜·시간). */
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /**
@@ -44,10 +39,15 @@ export function PostCard({ post, hot }: { post: PostListItem; hot?: boolean }) {
           {isNew && <span className="rounded bg-accent-ai-teal/15 px-1.5 py-0.5 font-semibold text-accent-ai-teal">NEW</span>}
         </div>
 
-        <h3 className="truncate font-display text-base font-semibold text-text-primary">
-          <Link href={`/boards/${post.boardSlug}/${post.id}`} className="after:absolute after:inset-0 after:content-['']">
+        <h3 className="flex items-center gap-1.5 font-display text-base font-semibold text-text-primary">
+          <Link
+            href={`/boards/${post.boardSlug}/${post.id}`}
+            className="min-w-0 truncate after:absolute after:inset-0 after:content-['']"
+          >
             {post.title}
           </Link>
+          {/* 댓글수: 제목 오른쪽에 [n] 대괄호, 포인트 색상(보라). */}
+          <span className="shrink-0 text-accent-primary-strong">[{post.commentCount}]</span>
         </h3>
         <p className="line-clamp-2 text-sm text-text-secondary">{post.excerpt}</p>
 
@@ -89,17 +89,10 @@ export function PostCard({ post, hot }: { post: PostListItem; hot?: boolean }) {
             {post.authorNickname}
           </span>
           <span>·</span>
-          <span>{formatRelativeTime(post.createdAt)}</span>
-          <span className="ml-auto flex items-center gap-3">
-            <span className="flex items-center gap-1">
-              <ThumbsUp className="h-3.5 w-3.5" /> {post.likeCount}
-            </span>
-            <span className="flex items-center gap-1">
-              <MessageSquare className="h-3.5 w-3.5" /> {post.commentCount}
-            </span>
-            <span className="flex items-center gap-1">
-              <Eye className="h-3.5 w-3.5" /> {post.viewCount}
-            </span>
+          <span className="text-[11px]">{formatDateTime(post.createdAt)}</span>
+          {/* 우측 하단은 공감(하트)+공감수만 노출. */}
+          <span className="ml-auto flex items-center gap-1">
+            <Heart className="h-3.5 w-3.5" /> {post.likeCount}
           </span>
         </div>
       </div>
