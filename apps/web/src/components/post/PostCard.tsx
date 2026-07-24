@@ -65,7 +65,7 @@ export function PostCard({ post, hot }: { post: PostListItem; hot?: boolean }) {
           </div>
         )}
 
-        <div className="mt-1 flex items-center gap-3 font-mono text-xs text-text-muted">
+        <div className="mt-auto flex items-center gap-2 pt-1 font-mono text-xs text-text-muted">
           <span className="flex items-center gap-1.5">
             {post.authorProfileImageUrl ? (
               // 작성자 프로필 사진(닉네임 왼쪽). 다양한 외부 호스트가 올 수 있어 next/image의
@@ -88,7 +88,6 @@ export function PostCard({ post, hot }: { post: PostListItem; hot?: boolean }) {
             )}
             {post.authorNickname}
           </span>
-          <span>·</span>
           <span className="text-[11px]">{formatDateTime(post.createdAt)}</span>
           {/* 우측 하단은 공감(하트)+공감수만 노출. */}
           <span className="ml-auto flex items-center gap-1">
